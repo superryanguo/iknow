@@ -8,6 +8,7 @@
 *.swo
 go.sum
 processor/processor
+processor/testdata
 runcmd/*
 datastore/data.gb
 datareader/datareader
