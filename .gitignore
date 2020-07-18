@@ -6,6 +6,8 @@
 *.dylib
 *.swp
 *.swo
+go.sum
+processor/processor
 runcmd/*
 datastore/data.gb
 datareader/datareader

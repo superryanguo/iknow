@@ -1,7 +1,12 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/superryanguo/iknow/config"
+)
 
 func main() {
-	fmt.Println("vim-go")
+	config.Init()
+	fmt.Println("host:", config.GetProgramConfig().GetHost())
 }

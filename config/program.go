@@ -5,13 +5,19 @@ type ProgramConfig interface {
 	GetPort() int
 	GetHost() string
 	GetAlg() string
+	GetTemplatePath() string
 }
 
 type defaultProgramConfig struct {
-	Enabled bool   `json:"enabled"`
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
-	Alg     string `json:"alg"`
+	Enabled      bool   `json:"enabled"`
+	Host         string `json:"host"`
+	Port         int    `json:"port"`
+	Alg          string `json:"alg"`
+	Templatepath string `json:"templatepath"`
+}
+
+func (c defaultProgramConfig) GetTemplatePath() string {
+	return c.Templatepath
 }
 
 func (c defaultProgramConfig) GetPort() int {

@@ -59,7 +59,7 @@ func Init() {
 		panic(err)
 	}
 
-	log.Infof("[Init] The configuration files：%s, %+v\n", pt+"/application.yml", profiles)
+	log.Debugf("[Init] The configuration files：%s, %+v\n", pt+"/application.yml", profiles)
 
 	if len(profiles.GetInclude()) > 0 {
 		include := strings.Split(profiles.GetInclude(), ",")
