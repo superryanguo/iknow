@@ -21,19 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//TODO:
-//1. use the trace log level to avoid the too many trace[done]
-//2. a full cover test case in _test file
-//3. auto loadbuild[done]
-//4. server show how many visitor
-//5. escapebytes to jump the header to real gpb bytes[done]
-//6. parse [1] = 65, type data in[done]
-//7. server port can be not hard code one[done]
-//8. light-weight datastore about the vistor operation[done]
-//9. progress bar[done]
-//10. multi-access test
-//11. myobject. issue
-
 type DataContext struct {
 	Token      string
 	Binstr     []byte
@@ -334,14 +321,6 @@ func pureHtmlDataIn(in string) string {
 			"", -1), "0x", "", -1), " ", "", -1)
 }
 
-func runshell(shell string) ([]byte, error) {
-	cmd := exec.Command("sh", "-c", shell)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-	return output, nil
-}
 func CheckAndFilterDataInput(data string) ([]byte, error) {
 	if strings.Contains(data, "[") && strings.Contains(data, "]") {
 		log.Info("[1] = 65 type data")
