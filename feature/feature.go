@@ -143,7 +143,7 @@ func ExtractFeatureTemplate(file string) (t FeatureTemplate, e error) {
 
 }
 
-func CaptureFeautresPlus(file string) ([]string, error) {
+func CaptureFeautres(file string) ([]string, error) {
 
 	if !utils.CheckFileExist(file) {
 		return nil, errors.New("Log file not exist")
@@ -201,57 +201,6 @@ func CaptureFeautresPlus(file string) ([]string, error) {
 						}
 						t = append(t, rt+v)
 					}
-				}
-			}
-		}
-	}
-
-	return t, nil
-}
-func CaptureFeautres(file string) ([]string, error) {
-
-	if !utils.CheckFileExist(file) {
-		return nil, errors.New("Log file not exist")
-	}
-
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		if err = f.Close(); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	if len(MsgMap.M) == 0 {
-		return nil, errors.New("MsgMap is empety, pls init it")
-	}
-
-	t := make([]string, TptSize, TptCap)
-	s := bufio.NewScanner(f)
-	rp := regexp.MustCompile(regx)
-
-	for s.Scan() {
-		r := strings.Fields(s.Text())
-		//log.Debug("Split each line  to =", r)
-		if len(r) != 0 {
-			for _, v := range r {
-				if _, ok := MsgMap.M[v]; ok {
-					sr := rp.FindAllString(s.Text(), -1)
-					if sr != nil {
-						t = append(t, sr[0]+v)
-					} else {
-						rt, err := SeekTime(f, 500)
-						if err != nil || len(rt) == 0 {
-							log.Info("Can't find timestamp for->", v)
-							t = append(t, v)
-							continue
-						}
-						t = append(t, rt+v)
-					}
-
 				}
 			}
 		}

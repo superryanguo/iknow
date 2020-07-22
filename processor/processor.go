@@ -29,7 +29,7 @@ func main() {
 	feature.MsgTpt.Print()
 	feature.MsgMap.Build(feature.MsgTpt)
 	feature.MsgMap.Print()
-	l, err := feature.CaptureFeautresPlus(logfile)
+	l, err := feature.CaptureFeautres(logfile)
 	if err != nil {
 		log.Fatal(err)
 	}
