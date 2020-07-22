@@ -1,8 +1,13 @@
 package utils
 
 import (
+	"crypto/md5"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
+	"strconv"
+	"time"
 )
 
 func CheckFileExist(file string) bool {
@@ -19,4 +24,11 @@ func Runshell(shell string) ([]byte, error) {
 		return nil, err
 	}
 	return output, nil
+}
+func TokenCreate() string {
+	ct := time.Now().Unix()
+	h := md5.New()
+	io.WriteString(h, strconv.FormatInt(ct, 10))
+	token := fmt.Sprintf("%x", h.Sum(nil))
+	return token
 }

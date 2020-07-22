@@ -1,4 +1,4 @@
-package main
+package processor
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 
 var logfile = "./testdata/sGnb.log"
 
-func main() {
+func Process() {
 	config.Init()
 	//log.Info("Host:", config.GetProgramConfig().GetHost())
 	log.Info("TemplateFilePath:", config.GetProgramConfig().GetTemplatePath())

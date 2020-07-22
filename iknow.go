@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"flag"
 	"fmt"
 	"html/template"
@@ -11,53 +9,41 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
-	dstore "github.com/superryanguo/postDataWebGo/datastore"
+	dstore "github.com/superryanguo/iknow/datastore"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/micro/go-micro/v2/logger"
+	"github.com/superryanguo/iknow/config"
+	"github.com/superryanguo/iknow/feature"
+	"github.com/superryanguo/iknow/utils"
 )
 
 type DataContext struct {
 	Token      string
-	Binstr     []byte
-	Encode     string
-	Decode     string
+	Data       string
+	Tempalte   feature.Tempalte
 	Returncode string
 }
 
-var ProtoFile string = "my.proto"
-var EscapeBytesMax int = 25
-
 func init() {
-	//log.SetFormatter(&log.JSONFormatter{})
-	log.SetOutput(os.Stdout)
-	//log.SetLevel(log.InfoLevel)
-	log.SetLevel(log.DebugLevel)
+	config.Init()
 }
-func tokenCreate() string {
-	ct := time.Now().Unix()
-	h := md5.New()
-	io.WriteString(h, strconv.FormatInt(ct, 10))
-	token := fmt.Sprintf("%x", h.Sum(nil))
-	return token
-}
-func PostDataHandler(w http.ResponseWriter, r *http.Request) {
+
+func KnowHandler(w http.ResponseWriter, r *http.Request) {
 	var e error
 	var summary string
 	ti := time.Now().Format("2006-01-02 15:04:05")
 	if r.Method == "GET" {
 		if r.RequestURI != "/favicon.ico" {
 			var context DataContext
-			t, e := template.ParseFiles("./templates/datapost.html")
+			t, e := template.ParseFiles("./templates/knowit.html")
 			if e != nil {
 				http.Error(w, e.Error(), http.StatusInternalServerError)
 				return
 			}
-			context.Token = tokenCreate()
+			context.Token = utils.TokenCreate()
 			log.Debug(ti, "the r.method ", r.Method, "create token", context.Token)
 			expiration := time.Now().Add(365 * 24 * time.Hour)
 			cookie := http.Cookie{Name: "csrftoken", Value: context.Token, Expires: expiration}
@@ -217,153 +203,12 @@ func PostDataHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func ParseGpbNormalMode(data []byte, message string, proto string) ([]byte, error) {
-	pkg, e := filterPkg(proto)
-	if e != nil {
-		return nil, e
-	}
-	messageType := pkg + "." + pureCmdStringPlus(message)
-	log.Debug("ParseGpbNormalMode Message type:", messageType)
-	cmdstr := fmt.Sprintf("echo %x | xxd -r -p | protoc --decode %s %s", data, messageType, proto)
-	log.Debugf("ParseGpbNormalMode cmdstr:%s\n", cmdstr)
-	output, e := runshell(cmdstr)
-	if e != nil {
-		return nil, e
-	}
-	log.Debugf("ParseGpbNormalMode output is:\n%s\n", output)
-	return output, nil
-
-}
-func pureCmdString(str string) string {
-	return strings.Trim(strings.Trim(strings.Trim(strings.Trim(str, "\n"), "\r"), " "), ";")
-}
-
-func pureCmdStringPlus(str string) string {
-	return strings.Replace(strings.Replace(strings.Replace(strings.Replace(str, "\n", "", -1), "\r", "", -1), " ", "", -1), ";", "", -1)
-}
-func filterPkg(proto string) (string, error) {
-	cmdstr := fmt.Sprintf("awk '$1 == \"package\" {print $2}' %s", proto)
-	output, e := runshell(cmdstr)
-	if e != nil {
-		return "", e
-	}
-	return pureCmdStringPlus(fmt.Sprintf("%s", output)), nil
-
-}
-func filterMessageTypes(proto string) ([]string, error) {
-	cmdstr := fmt.Sprintf("awk '$1 == \"message\" {print $2}' %s", proto)
-	output, e := runshell(cmdstr)
-	if e != nil {
-		return nil, e
-	}
-	messages := strings.Split(fmt.Sprintf("%s", output), "\n")
-	log.Debugf("before filter return %s\n", messages)
-	for i := 0; i < len(messages); {
-		if messages[i] == "\n" {
-			messages = append(messages[:i], messages[i+1:]...)
-		} else {
-			i++
-		}
-	}
-	log.Debugf("After filter return %s\n", messages)
-	return messages, nil
-}
-
-func HardcoreDecode(proto string, data []byte) ([]byte, error) {
-	var pkgMesg, cmdstr string
-	pkg, e := filterPkg(proto)
-	if e != nil {
-		return nil, e
-	}
-	types, e := filterMessageTypes(proto)
-	if e != nil {
-		return nil, e
-	}
-	for i := 0; i < EscapeBytesMax; i++ {
-		log.Debugf("HardcoreDecode Index=%d, data=%x\n", i, data[i:])
-		for k, message := range types {
-			pkgMesg = pkg + "." + message
-			log.Debugf("decode the %v type %s\n", k, pkgMesg)
-
-			cmdstr = fmt.Sprintf("echo %x | xxd -r -p | protoc --decode %s %s", data[i:], pkgMesg, proto)
-			log.Debug("cmd =", cmdstr)
-			cmd := exec.Command("sh", "-c", cmdstr)
-			output, err := cmd.CombinedOutput()
-			if err != nil || JudgeHardcoreDecodeResult(output) {
-				log.Debug("DecodeFail on messageType ", pkgMesg, " continue...")
-				continue
-			} else {
-				return []byte("HardcoreDecode Type->" + pkgMesg + ":\n" + string(output)), nil
-			}
-		}
-	}
-	//finally give a raw decode
-	cmdstr = fmt.Sprintf("echo %x | xxd -r -p | protoc --decode_raw", data)
-	return runshell(cmdstr)
-}
-
-func JudgeHardcoreDecodeResult(result []byte) bool {
-	data := string(result)
-	datas := strings.Split(data, "\n")
-	re := regexp.MustCompile("^[0-9]*:{1} ")
-	for k, v := range datas {
-		log.Debug(k, "line:", v)
-		if re.MatchString(v) {
-			log.Debug("JudgeHardcoreDecodeResult return true... on line", k, ":", v)
-			return true
-		}
-	}
-	return false
-}
-func pureHtmlDataIn(in string) string {
-	return strings.Replace(strings.Replace(
-		strings.Replace(strings.Replace(in, "\n", "", -1), "\r",
-			"", -1), "0x", "", -1), " ", "", -1)
-}
-
-func CheckAndFilterDataInput(data string) ([]byte, error) {
-	if strings.Contains(data, "[") && strings.Contains(data, "]") {
-		log.Info("[1] = 65 type data")
-		return ConvertDecToHexDataString(data)
-	} else {
-		log.Info("hex 08aebf type data")
-		log.Debug("PureDataIn :", pureHtmlDataIn(data))
-
-		return hex.DecodeString(pureHtmlDataIn(data))
-	}
-	return nil, errors.New("Errors in check the data")
-}
-func ConvertDecToHexDataString(data string) ([]byte, error) {
-	re := regexp.MustCompile("\\[{1}[0-9]*]{1} ={1} {1}")
-	str := re.ReplaceAllString(data, "")
-	log.Debug("Filter data=", str)
-	str = strings.TrimSpace(strings.Replace(strings.Replace(strings.Replace(str, "\n", "", -1), "\r", "", -1), ",", "", -1))
-	s := strings.Split(str, " ")
-	log.Debug("Filter s=", s)
-	b := make([]byte, len(s))
-	for i, v := range s {
-		//fmt.Printf("%d=%s\n", i, v)
-		t, err := strconv.Atoi(v)
-		if err != nil {
-			return nil, err
-		}
-		b[i] = byte(t)
-	}
-	log.Debugf("Fmt b=%x\n", b)
-	return b, nil
-}
-func FilterDecDataString(data string) string {
-	re := regexp.MustCompile("\\[{1}[0-9]*]{1}={1}")
-	str := re.ReplaceAllString(pureHtmlDataIn(data), "")
-	log.Debug("Filter data=", str)
-	return strings.Replace(strings.Replace(str, ",", "", -1), " ", "", -1)
-}
 func main() {
 	port := flag.String("port", "8091", "Server Port")
 	flag.Parse()
 
 	go dstore.Run()
-	http.HandleFunc("/", PostDataHandler)
+	http.HandleFunc("/", KnowHandler)
 	http.Handle("/templates/", http.StripPrefix("/templates/", http.FileServer(http.Dir("./templates"))))
 	http.Handle("/runcmd/", http.StripPrefix("/runcmd/", http.FileServer(http.Dir("./runcmd"))))
 	log.Infof("Running the server on port %q.", *port)
