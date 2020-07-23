@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <h1 align="center">GPB Data Analysis</h1>
+        <h1 align="center">IKNOW</h1>
         <link rel="icon" href="/templates/favicon.ico" type="image/x-icon"/>
         <style>
         .progressbar{
@@ -34,8 +34,7 @@
                 }
         </script>
         <div>
-            <p>Pls choose the right data proto file to upload, and input the bin string, then analyize!</p>
-            <p>The hard core mode is crazy to try!</p>
+            <p>Upload the .dec log and input your template, then analyize!</p>
         </div>
         <link rel="stylesheet" type="text/css" href="/templates/style.css" />
     </head>
@@ -51,18 +50,20 @@
 
         <form enctype="multipart/form-data"  action="/" method="POST">
             <div id="CodeArea">
-                <h2>Input:</h2>
+                <h2>MessageTemplate:</h2>
                 <textarea id="TestCode" name="bodyin" wrap="logical">
-{{.Encode}}
+{{.Template}}
                 </textarea>
                 <span id="file-group" class="hidden">
-                    DataAnalysisSource: <input type="file" name="uploadfile" />
+                    *.dec log file: <input type="file" name="uploadfile" />
                 </span>
                 <br>Choose the mode:
-                <input type="radio" name="Mode" value="Normal" /> NormalMode
-                <input type="radio" name="Mode" value="HardCore" /> HardCoreMode
-                <br>MessageType:
-                <input type="text" name="MessageType" class="form-control" id="add-note-title" placeholder="input here" />
+                <input type="radio" name="Mode" value="TemplateMatch" /> TemplateMatch
+                <input type="radio" name="Mode" value="MachineLearning" /> Machine-Learning
+                <br>Choose Learning Model:
+                <input type="radio" name="Model" value="HoSrc" /> Handover-Src
+                <input type="radio" name="Model" value="HoTgt" /> Handover-Tgt
+                <input type="radio" name="Model" value="Non-Ho" /> Other
                 <div id="butt">
                     <input onclick="pbfunction()" type="submit" value="Analyze" />
                     <input type="hidden" name="CSRFToken" value="{{.Token}}" />
@@ -72,9 +73,9 @@
         </form>
 
         <div id="result">
-            <h2>Output:</h2>
+            <h2>Result:</h2>
             <textarea id="decoderesult" name="bodyout" wrap="logical", readonly="readonly">
-{{.Decode}}
+{{.Result}}
             </textarea>
         </div>
 
