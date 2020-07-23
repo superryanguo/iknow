@@ -9,7 +9,8 @@
 go.sum
 processor/processor
 processor/testdata
-runcmd/*
+iknow
+#runcmd/*
 datastore/data.gb
 datareader/datareader
 

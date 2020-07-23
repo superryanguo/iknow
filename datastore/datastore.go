@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/micro/go-micro/v2/logger"
 )
 
 //TODO:
@@ -90,12 +90,15 @@ func (a *AccRecd) ReadFile(f string) error {
 	} else {
 		file, err := os.Open(f)
 		defer file.Close()
+
 		if err != nil {
 			return err
 		}
+
 		err = gob.NewDecoder(file).Decode(&a.RecData)
 		if err != nil {
-			return err
+			log.Warn("Init DataStore File Err:", err)
+			//ignore return err
 		} else {
 			return nil
 		}
@@ -138,14 +141,6 @@ func Run() {
 		return //slient go back, don't fatal
 	}
 	log.Info("DataStore finish readfile...")
-
-	//go func() {
-	//DataChan <- MesgData{Name: "Ryan", Summary: "Hello"}
-	//DataChan <- MesgData{Name: "Guo", Summary: "World"}
-	//log.Debug("sending data done")
-	//close(DataChan)
-	//}()
-	//log.Debug("Launch the message sender done!")
 
 	var more bool = true
 	var msg MesgData

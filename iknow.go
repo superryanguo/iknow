@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"html/template"
@@ -16,14 +15,16 @@ import (
 
 	log "github.com/micro/go-micro/v2/logger"
 	"github.com/superryanguo/iknow/config"
-	"github.com/superryanguo/iknow/feature"
+	"github.com/superryanguo/iknow/processor"
 	"github.com/superryanguo/iknow/utils"
 )
 
+var LogFile string = "my.log"
+
 type DataContext struct {
 	Token      string
-	Data       string
-	Tempalte   feature.Tempalte
+	Result     string
+	Template   []string
 	Returncode string
 }
 
@@ -31,6 +32,10 @@ func init() {
 	config.Init()
 }
 
+func CheckAndFilterInput(data string) ([]string, error) {
+	return []string{"1231", ""}, nil
+	//return nil, errors.New("Errors in check the data")
+}
 func KnowHandler(w http.ResponseWriter, r *http.Request) {
 	var e error
 	var summary string
@@ -66,7 +71,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 		context.Returncode = "Parse done"
 		formToken := template.HTMLEscapeString(r.Form.Get("CSRFToken"))
 		mode := template.HTMLEscapeString(r.Form.Get("Mode"))
-		mesgType := template.HTMLEscapeString(r.Form.Get("MessageType"))
+		model := template.HTMLEscapeString(r.Form.Get("Model"))
 		context.Token = formToken
 		n := strings.Split(r.RemoteAddr, ":")[0] + "-" + strings.TrimLeft(strings.Fields(r.UserAgent())[1], "(")
 		uname := strings.TrimRight(n, ";")
@@ -77,17 +82,16 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			context.Returncode = "cookie read error" + e.Error()
 			goto SHOW
 		}
-		context.Binstr, e = CheckAndFilterDataInput(bodyin)
-		if e != nil || context.Binstr == nil {
+		context.Template, e = CheckAndFilterInput(bodyin)
+		if e != nil || context.Template == nil {
 			log.Warn(e)
 			context.Returncode = e.Error() + "or nil data"
 			goto SHOW
 		}
-		log.Infof("%s %s %s  with cookie token %s and form token %s, Mode:%s,Type:%s\n",
-			ti, uname, r.Method, cookie.Value, context.Token, mode, mesgType)
-		summary = ti + "|" + r.Method + "|" + mode + "|" + mesgType
-		log.Info("indata :\n", bodyin)
-		context.Encode = hex.EncodeToString(context.Binstr)
+		log.Infof("%s %s %s  with cookie token %s and form token %s, Mode:%s,Model:%s\n",
+			ti, uname, r.Method, cookie.Value, context.Token, mode, model)
+		summary = ti + "|" + r.Method + "|" + mode + "|" + model
+		log.Info("Input :\n", bodyin)
 		if formToken == cookie.Value {
 			context.Returncode = "Get EqualToken done"
 			file, header, e := r.FormFile("uploadfile")
@@ -112,7 +116,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				context.Returncode = "create the dir done"
-				upload := "./runcmd/" + formToken + "/" + ProtoFile
+				upload := "./runcmd/" + formToken + "/" + LogFile
 				_, e := os.Stat(upload)
 				if e == nil {
 					log.Debug("upload file already exist, rm it first...")
@@ -138,41 +142,29 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				context.Returncode = "upload file done"
 
 				//run cmd for what you want
-				if mode == "Normal" {
-					if mesgType != "" {
-						output, e := ParseGpbNormalMode(context.Binstr, mesgType, upload)
-						if e != nil {
-							log.Warn(e)
-							context.Decode = e.Error()
-							context.Returncode = fmt.Sprintf("ParseNormalMode Error:%s", e.Error())
-						} else {
-							context.Decode = fmt.Sprintf("%s", output)
-							context.Returncode = "Successfully Parse Normal mode done!"
-							summary += "Succ"
-						}
-					} else {
-						context.Returncode = "Error! NormalMode Must fill the messagetype"
-					}
-				} else if mode == "HardCore" {
-					output, e := HardcoreDecode(upload, context.Binstr)
+				if mode == "TemplateMatch" {
+					output, e := processor.TemplateMatch(context.Template)
 					if e != nil {
 						log.Warn(e)
-						context.Decode = e.Error()
-						context.Returncode = fmt.Sprintf("HardCoreMode Error:%s", e.Error())
+						context.Result = e.Error()
+						context.Returncode = fmt.Sprintf("TemplateMatch Error:%s", e.Error())
 					} else {
-						context.Decode = fmt.Sprintf("%s", output)
-						context.Returncode = "Successfully Parse HardCore mode done!"
+						context.Result = fmt.Sprintf("%s", output)
+						context.Returncode = "TemplateMatch done!"
 						summary += "Succ"
-
 					}
+				} else if mode == "MachineLearning" {
+					context.Returncode = "MachineLearning done!"
+					summary += "Succ"
+
 				} else {
 					log.Warn("Unknow parse mode")
 					context.Returncode = "Unknown parse mode!"
-				}
 
+				}
 			} else {
 				context.Returncode = "Can't read the src file!"
-				log.Warn("Can't create the data source file, maybe nil or empty upload filename")
+				log.Warn("Can't create log file, maybe nil or empty upload filename")
 			}
 		} else {
 			log.Warn("form token mismatch")
@@ -180,14 +172,13 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	SHOW:
 		dstore.SendData(uname, summary+"|"+context.Returncode)
-		b, e := template.ParseFiles("./templates/datapost.html")
+		b, e := template.ParseFiles("./templates/knowit.html")
 		if e != nil {
 			log.Warn(e)
 			http.Error(w, e.Error(), http.StatusInternalServerError)
 			return
 		}
-		log.Infof("Encode:\n%s", context.Encode)
-		log.Infof("Decode:\n%s", context.Decode)
+		log.Infof("Data:\n%s", context.Template)
 		log.Infof("Returncode:\n%s", context.Returncode)
 		e = b.Execute(w, context)
 		if e != nil {

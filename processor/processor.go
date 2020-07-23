@@ -38,3 +38,7 @@ func Process() {
 	fmt.Println("+++++++++++++++")
 
 }
+func TemplateMatch([]string) (string, error) {
+	return "12345", nil
+
+}

@@ -32,3 +32,7 @@ func TokenCreate() string {
 	token := fmt.Sprintf("%x", h.Sum(nil))
 	return token
 }
+func CheckFileName(prefix string) bool {
+	//TODO:
+	return true
+}

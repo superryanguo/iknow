@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"os"
 
-	log "github.com/sirupsen/logrus"
+	log "github.com/micro/go-micro/v2/logger"
 )
 
 //TODO:

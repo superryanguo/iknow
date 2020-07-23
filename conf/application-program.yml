@@ -1,0 +1,7 @@
+app:
+  program:
+    enabled: true
+    host: 127.0.0.1
+    port: 8092
+    alg: svm
+    templatepath: ./testdata/ho.tmpt
