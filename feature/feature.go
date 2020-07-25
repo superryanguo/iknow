@@ -76,6 +76,15 @@ type FeatureTemplate struct {
 	T []Template
 }
 
+func (m FeatureTestStatus) Print() {
+	fmt.Println("++++++++FeatureTestStatus+++++++++++++")
+	fmt.Println("Index------Seq------->Msg")
+	for k, v := range m.S {
+		fmt.Printf("%d ------> %v\n", k, v)
+	}
+	fmt.Println("++++++++++++++++++++++++++++++++++")
+}
+
 func (t *FeatureTemplate) Print() {
 	fmt.Println("++++++++FeatureTemplate+++++++++++++")
 	fmt.Println("Seq---------->Msg---------->Point")
@@ -90,7 +99,7 @@ func (m *FeatureMsgMap) Print() {
 	fmt.Println("++++++++FeatureMsgMap+++++++++++++")
 	fmt.Println("Msg------->Point")
 	for k, v := range m.M {
-		fmt.Printf("%s ------> %d\n", k, v)
+		fmt.Printf("%s ------> %v\n", k, v)
 	}
 	fmt.Println("++++++++++++++++++++++++++++++++++")
 }
@@ -113,7 +122,7 @@ func (m FeaturePureChain) Print() {
 	fmt.Println("++++++++++++++++++++++++++++++++++")
 }
 
-func CheckDuplicateMsg(t *FeatureTemplate) error {
+func CheckDuplicateMsg(t FeatureTemplate) error {
 	//TODO: the same name in the feature template
 	//if the same message name, such as Request->Request1/Request2
 	return nil
@@ -132,7 +141,7 @@ func (m *FeatureMsgMap) Build(t FeatureTemplate) error {
 }
 
 //ExtractFeatureTemplate extract the feature template from file
-//First element should be seq, 2nd be message name, 3rd should be point
+//First element should be seq(start from 1, not 0), 2nd be message name, 3rd should be point
 //Divided by space
 func ExtractFeatureTemplate(file string) (t FeatureTemplate, e error) {
 	if !utils.CheckFileExist(file) {
@@ -204,6 +213,17 @@ func ExtractFeatureTemplateHtml(input string) (t FeatureTemplate, err error) {
 	}
 
 	return t, nil
+}
+
+func BuildTestStatus(r FeaturePureChain) (fs FeatureTestStatus) {
+	fs.S = make([]TestStatus, TptSize, TptCap)
+	for i := 0; i < len(r); i++ {
+		v := TestStatus{}
+		v.Seq = i + 1 //begin from 1
+		v.MsgName = r[i].Value
+		fs.S = append(fs.S, v)
+	}
+	return
 }
 
 func CaptureFeautres(file string) ([]FeatureRaw, error) {

@@ -23,9 +23,14 @@ import (
 var LogFile string = "my.log"
 
 type DataContext struct {
-	Token      string
-	Result     string
-	Template   feature.FeatureTemplate
+	Token    string
+	Result   string
+	Template feature.FeatureTemplate
+	//TODO: should combine or split with the feature.MsgTpt
+	//which way is better, should we put MsgTpt in feature package or
+	//Just here?
+	FeaRaw     feature.FeatureRawChain
+	FeaPur     feature.FeaturePureChain
 	Returncode string
 }
 
@@ -64,7 +69,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		r.ParseMultipartForm(32 << 20) //defined maximum size of file
-		context.Returncode = "Parse done"
+		context.Returncode = "Form Parse done"
 		formToken := template.HTMLEscapeString(r.Form.Get("CSRFToken"))
 		mode := template.HTMLEscapeString(r.Form.Get("Mode"))
 		model := template.HTMLEscapeString(r.Form.Get("Model"))
@@ -72,6 +77,8 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 		n := strings.Split(r.RemoteAddr, ":")[0] + "-" + strings.TrimLeft(strings.Fields(r.UserAgent())[1], "(")
 		uname := strings.TrimRight(n, ";")
 		bodyin := template.HTMLEscapeString(r.Form.Get("bodyin"))
+		var matchresult bool = false
+		var fts feature.FeatureTestStatus
 		cookie, e := r.Cookie("csrftoken")
 		if e != nil {
 			log.Warn(e)
@@ -86,11 +93,13 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			//http.Error(w, e.Error(), http.StatusInternalServerError)
 			goto SHOW
 		}
-		log.Debug("tpt:", tpt)
+		feature.MsgTpt = context.Template
+		feature.MsgMap.Build(feature.MsgTpt)
+		feature.MsgMap.Print()
 		log.Infof("%s %s %s  with cookie token %s and form token %s, Mode:%s,Model:%s\n",
 			ti, uname, r.Method, cookie.Value, context.Token, mode, model)
 		summary = ti + "|" + r.Method + "|" + mode + "|" + model
-		log.Info("Input :\n", bodyin)
+		log.Debug("Input :\n", bodyin)
 
 		if formToken == cookie.Value {
 			context.Returncode = "Get EqualToken done"
@@ -137,21 +146,43 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 					context.Returncode = "Can't create the file!"
 					goto SHOW
 				}
-				defer f.Close()
 				io.Copy(f, file)
+				f.Close()
 				context.Returncode = "upload file done"
 
+				context.FeaRaw, e = feature.CaptureFeautres(upload)
+				if e != nil {
+					context.Result = e.Error()
+					context.Returncode = "CaputreFeatures Fail!"
+					goto SHOW
+				}
+				context.FeaRaw.Print()
+				context.FeaPur, e = feature.TransformFeaturePure(feature.PureDuplicate(context.FeaRaw))
+				if e != nil {
+					context.Result = e.Error()
+					context.Returncode = "TransformFeaturePure Fail!"
+					goto SHOW
+				}
+				context.FeaPur.Print()
 				//run cmd for what you want
 				if mode == "TemplateMatch" {
-					output, e := processor.TemplateMatch(context.Template)
+					fts = feature.BuildTestStatus(context.FeaPur)
+					log.Debug("TemplateMatch fts=", fts)
+					matchresult, e = processor.TemplateMatch(fts, context.Template)
 					if e != nil {
 						log.Warn(e)
 						context.Result = e.Error()
 						context.Returncode = fmt.Sprintf("TemplateMatch Error:%s", e.Error())
 					} else {
-						context.Result = fmt.Sprintf("%s", output)
-						context.Returncode = "TemplateMatch done!"
-						summary += "Succ"
+						if matchresult {
+							context.Result = fmt.Sprintf("Successfully Match!\n")
+							context.Returncode = "Match"
+							summary += "|Done And Match"
+						} else {
+							context.Result = fmt.Sprintf("Log and Template MisMatch!\n")
+							context.Returncode = "MisMatch"
+							summary += "|Done And MisMatch"
+						}
 					}
 				} else if mode == "MachineLearning" {
 					context.Returncode = "MachineLearning done!"
@@ -170,16 +201,17 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			log.Warn("form token mismatch")
 			context.Returncode = "form token mismatch"
 		}
+
 	SHOW:
-		dstore.SendData(uname, summary+"|"+context.Returncode)
+		dstore.SendData(uname, summary)
 		b, e := template.ParseFiles("./templates/knowit.html")
 		if e != nil {
 			log.Warn(e)
 			http.Error(w, e.Error(), http.StatusInternalServerError)
 			return
 		}
-		log.Infof("Data:\n%s", context.Template)
-		log.Infof("Returncode:\n%s", context.Returncode)
+		log.Infof("Template:%v\n", context.Template)
+		log.Infof("Returncode:%v\n", context.Returncode)
 		e = b.Execute(w, context)
 		if e != nil {
 			log.Warn(e)

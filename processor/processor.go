@@ -47,6 +47,7 @@ func Process() {
 //If the template message point =0, we don't support to match it, pls just
 //Del the point 0 message in the template if it can't have a point
 //if any circule has one match, then return true
+//msg0 in the template is a key
 func TemplateMatch(s feature.FeatureTestStatus, t feature.FeatureTemplate) (bool, error) {
 
 	var index [MaxMatch]int //no more than 100
@@ -72,7 +73,7 @@ func TemplateMatch(s feature.FeatureTestStatus, t feature.FeatureTemplate) (bool
 
 		for j := 0; j < len(t.T); j++ {
 			if t.T[j].Seq != (s.S[id].Seq-seq0+1) || t.T[j].MsgName != s.S[id].MsgName {
-				log.Debugf("Mismatch: Seq=%d----%d,MsgName=%s-----%s\n", t.T[j].Seq, s.S[id].Seq-seq0+1, t.T[j], MsgName, s.S[id].MsgName)
+				log.Debugf("Mismatch: Seq=%d----%d,MsgName=%s-----%s\n", t.T[j].Seq, s.S[id].Seq-seq0+1, t.T[j].MsgName, s.S[id].MsgName)
 				err = fmt.Errorf("id=%d, seq/message mismatch", j)
 				find = false
 				break
@@ -88,9 +89,5 @@ func TemplateMatch(s feature.FeatureTestStatus, t feature.FeatureTemplate) (bool
 	}
 
 	return false, err
-
-}
-
-func SortFeature() {
 
 }
