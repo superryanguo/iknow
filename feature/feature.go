@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -33,22 +34,34 @@ func init() {
 	MsgTpt.T = make([]Template, TptSize, TptCap)
 }
 
+type TestStatus struct {
+	Seq     int
+	MsgName string
+}
+
 type Template struct {
 	Seq     int
 	MsgName string
 	Point   int
 }
 
+type FeatureRawChain []FeatureRaw
+
 type FeatureRaw struct {
 	Time  time.Time //Message Time
-	Value string    //Message Name
-	Flag  int       //TBD: 1 pure 0 not pure
+	Nano  int64
+	Value string //Message Name
+	Flag  int    //TBD: 1 pure 0 not pure
 }
 
+type FeaturePureChain []FeaturePure
 type FeaturePure struct {
-	Time  int //delta time
-	Value int //message value from a map
-	Flag  int
+	Time   time.Time //Message Time
+	Nano   int64
+	BoTime int64  //delta time from the msg0
+	DeTime int64  //delta time from the previous msg
+	Value  string //message value from a map
+	Flag   int
 }
 
 //A FeatureMsgMap is how the message to map to a int point
@@ -56,6 +69,9 @@ type FeatureMsgMap struct {
 	M map[string]int
 }
 
+type FeatureTestStatus struct {
+	S []TestStatus
+}
 type FeatureTemplate struct {
 	T []Template
 }
@@ -79,6 +95,24 @@ func (m *FeatureMsgMap) Print() {
 	fmt.Println("++++++++++++++++++++++++++++++++++")
 }
 
+func (m FeatureRawChain) Print() {
+	fmt.Println("++++++++FeatureRaw+++++++++++++")
+	fmt.Println("Index-->Time----Nano-----------Msg-------Flag")
+	for k, v := range m {
+		fmt.Printf("%d ------> %v\n", k, v)
+	}
+	fmt.Println("++++++++++++++++++++++++++++++++++")
+}
+
+func (m FeaturePureChain) Print() {
+	fmt.Println("++++++++FeaturePure+++++++++++++")
+	fmt.Println("Index-->Time----Nano-----BoTime---DeTime---Msg-------Flag")
+	for k, v := range m {
+		fmt.Printf("%d ------> %v\n", k, v)
+	}
+	fmt.Println("++++++++++++++++++++++++++++++++++")
+}
+
 func CheckDuplicateMsg(t *FeatureTemplate) error {
 	//TODO: the same name in the feature template
 	//if the same message name, such as Request->Request1/Request2
@@ -98,7 +132,7 @@ func (m *FeatureMsgMap) Build(t FeatureTemplate) error {
 }
 
 //ExtractFeatureTemplate extract the feature template from file
-//First element should be seq, 2nd be message name, 3rd shoudl be point
+//First element should be seq, 2nd be message name, 3rd should be point
 //Divided by space
 func ExtractFeatureTemplate(file string) (t FeatureTemplate, e error) {
 	if !utils.CheckFileExist(file) {
@@ -142,8 +176,37 @@ func ExtractFeatureTemplate(file string) (t FeatureTemplate, e error) {
 	return t, nil
 
 }
+func ExtractFeatureTemplateHtml(input string) (t FeatureTemplate, err error) {
+	t.T = make([]Template, TptSize, TptCap)
+	datas := strings.Split(input, "\n")
 
-func CaptureFeautres(file string) ([]string, error) {
+	for _, v := range datas {
+		r := strings.Fields(v)
+		log.Debug("Split each line  to =", r)
+		if len(r) == 0 {
+			continue
+		}
+		if len(r) != (PointIndex + 1) {
+			return FeatureTemplate{nil}, errors.New("Wrong format of tempalte files, not 3 IE")
+		}
+		j := Template{}
+		j.Seq, err = strconv.Atoi(r[SeqIndex])
+		if err != nil {
+			return FeatureTemplate{nil}, err
+		}
+		j.MsgName = r[MsgIndex]
+		j.Point, err = strconv.Atoi(r[PointIndex])
+		if err != nil {
+			return FeatureTemplate{nil}, err
+		}
+
+		t.T = append(t.T, j)
+	}
+
+	return t, nil
+}
+
+func CaptureFeautres(file string) ([]FeatureRaw, error) {
 
 	if !utils.CheckFileExist(file) {
 		return nil, errors.New("Log file not exist")
@@ -164,7 +227,7 @@ func CaptureFeautres(file string) ([]string, error) {
 		return nil, errors.New("MsgMap is empety, pls init it")
 	}
 
-	t := make([]string, TptSize, TptCap)
+	t := make([]FeatureRaw, TptSize, TptCap)
 	buffer := make([]byte, PageSize)
 
 	for {
@@ -183,10 +246,12 @@ func CaptureFeautres(file string) ([]string, error) {
 		} else {
 
 			r := strings.Fields(string(buffer))
-			log.Debug("Split each line  to =", r)
+			//log.Debug("Split each line  to =", r)
 			if len(r) != 0 {
 				for _, v := range r {
 					if _, ok := MsgMap.M[v]; ok {
+						var raw FeatureRaw
+						raw.Value = v
 						j := strings.Index(string(buffer), v)
 
 						_, err := f.Seek(lpos+int64(j+len(v)), 0)
@@ -196,10 +261,16 @@ func CaptureFeautres(file string) ([]string, error) {
 						rt, err := SeekTime(f, 500)
 						if err != nil || len(rt) == 0 {
 							log.Info("Can't find timestamp for->", v)
-							t = append(t, v)
+							t = append(t, raw)
 							continue
 						}
-						t = append(t, rt+v)
+						w := strings.Replace(strings.Replace(rt, "[", "", -1), "]", "", -1)
+						log.Debug("CaptureFeautres time:", w)
+						raw.Time, raw.Nano, err = FindTimeNano(w)
+						if err != nil {
+							return nil, fmt.Errorf("FindTimeNano Error:%s", err)
+						}
+						t = append(t, raw)
 					}
 				}
 			}
@@ -266,4 +337,98 @@ func SeekTime(file *os.File, size int64) (string, error) {
 	}
 
 	return result, nil
+}
+
+func FindTimeNano(t string) (time.Time, int64, error) {
+	s := strings.Split(t, ".")
+	if len(s) != 2 {
+		return time.Time{}, 0, errors.New("Wrong time format FindTimeNano")
+	}
+	tn, err := time.ParseInLocation("2006-01-02 15:04:05", s[0], time.Local)
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+
+	na, err := strconv.ParseInt(s[1], 10, 64)
+	if err != nil {
+		return time.Time{}, 0, err
+	}
+
+	return tn, na, nil
+}
+
+func PureDuplicate(c []FeatureRaw) []FeatureRaw {
+	fnew := make([]FeatureRaw, TptSize, TptCap)
+
+	mapit := make(map[FeatureRaw]bool)
+
+	for _, v := range c {
+		if _, ok := mapit[v]; !ok {
+			mapit[v] = true
+			fnew = append(fnew, v)
+		}
+	}
+	return fnew
+}
+
+//TransformFeaturePure make the featureraw to featurepure
+func TransformFeaturePure(c []FeatureRaw) ([]FeaturePure, error) {
+	m0 := c[0]
+	log.Debug("TransformFeaturePureMsg0=", m0.Value)
+
+	sort.SliceStable(c, func(i, j int) bool {
+		if c[i].Time == c[j].Time {
+			return c[i].Nano < c[j].Nano
+		} else {
+			return c[i].Time.Before(c[j].Time)
+		}
+	})
+
+	var cn FeatureRawChain = c
+	cn.Print()
+
+	if m0.Value != c[0].Value {
+		log.Debug("TransformFeaturePureMsg0=", c[0].Value)
+		return nil, errors.New("Wrong Message0")
+	}
+
+	fp := make([]FeaturePure, TptSize, TptCap)
+
+	for i := 0; i < len(c); i++ {
+		var vn FeaturePure
+		vn.Time = c[i].Time
+		vn.Nano = c[i].Nano
+		vn.Flag = c[i].Flag
+		vn.Value = c[i].Value
+		if i == 0 {
+			vn.BoTime = 0
+			vn.DeTime = 0
+		} else {
+			vn.BoTime = ComputeTimeDelta(c[0], c[i])
+			vn.DeTime = ComputeTimeDelta(c[i-1], c[i])
+		}
+
+		if vn.BoTime < 0 || vn.DeTime < 0 {
+			return nil, errors.New("TransformFeaturePure: lessthan0 error")
+		}
+
+		fp = append(fp, vn)
+	}
+	return fp, nil
+}
+
+func ComputeTimeDelta(before, after FeatureRaw) int64 {
+	if before.Time.Before(after.Time) {
+		d := after.Time.Sub(before.Time)
+		log.Debug("before", before, after)
+		return d.Nanoseconds() + after.Nano - before.Nano //TODO: how tomake the pricise detla?
+	} else if before.Time.After(after.Time) {
+		//not right if negative
+		log.Debug("after", before, after)
+		return -1
+	} else {
+		log.Debug("equal", before, after)
+		return after.Nano - before.Nano
+	}
+	return -1
 }

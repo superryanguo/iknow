@@ -25,24 +25,6 @@ type AccRecd struct {
 
 func (a *AccRecd) Save(f string) error {
 
-	//_, e := os.Stat(f)
-	//if e == nil {
-	////if !os.IsNotExist(e) {
-	////if file exist, then remove it first
-	//log.Debug("Datafile already exist...")
-	//shell := "rm -fr " + f
-	//log.Debug("run cmd", shell)
-	//cmd := exec.Command("sh", "-c", shell)
-	//output, err := cmd.CombinedOutput()
-	//if err != nil {
-	//log.Warn("File can't remove to save new file!")
-	//return err
-	//}
-	//log.Debugf("Rm done, %s\n", output)
-	////}
-	//}
-
-	//log.Debug("Saving to file...")
 	file, err := os.OpenFile(f, os.O_RDWR|os.O_CREATE, 0777)
 	defer file.Close()
 	if err != nil {

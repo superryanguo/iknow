@@ -12,6 +12,7 @@ import (
 	"time"
 
 	dstore "github.com/superryanguo/iknow/datastore"
+	"github.com/superryanguo/iknow/feature"
 
 	log "github.com/micro/go-micro/v2/logger"
 	"github.com/superryanguo/iknow/config"
@@ -24,7 +25,7 @@ var LogFile string = "my.log"
 type DataContext struct {
 	Token      string
 	Result     string
-	Template   []string
+	Template   feature.FeatureTemplate
 	Returncode string
 }
 
@@ -32,10 +33,6 @@ func init() {
 	config.Init()
 }
 
-func CheckAndFilterInput(data string) ([]string, error) {
-	return []string{"1231", ""}, nil
-	//return nil, errors.New("Errors in check the data")
-}
 func KnowHandler(w http.ResponseWriter, r *http.Request) {
 	var e error
 	var summary string
@@ -66,7 +63,6 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, e.Error(), http.StatusInternalServerError)
 			return
 		}
-
 		r.ParseMultipartForm(32 << 20) //defined maximum size of file
 		context.Returncode = "Parse done"
 		formToken := template.HTMLEscapeString(r.Form.Get("CSRFToken"))
@@ -82,16 +78,20 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			context.Returncode = "cookie read error" + e.Error()
 			goto SHOW
 		}
-		context.Template, e = CheckAndFilterInput(bodyin)
-		if e != nil || context.Template == nil {
+		context.Template, e = feature.ExtractFeatureTemplateHtml(bodyin)
+		if e != nil {
 			log.Warn(e)
-			context.Returncode = e.Error() + "or nil data"
+			context.Returncode = "InputDataError:" + e.Error()
+			//TODO: should the returncode method combine into below:
+			//http.Error(w, e.Error(), http.StatusInternalServerError)
 			goto SHOW
 		}
+		log.Debug("tpt:", tpt)
 		log.Infof("%s %s %s  with cookie token %s and form token %s, Mode:%s,Model:%s\n",
 			ti, uname, r.Method, cookie.Value, context.Token, mode, model)
 		summary = ti + "|" + r.Method + "|" + mode + "|" + model
 		log.Info("Input :\n", bodyin)
+
 		if formToken == cookie.Value {
 			context.Returncode = "Get EqualToken done"
 			file, header, e := r.FormFile("uploadfile")
@@ -121,7 +121,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				if e == nil {
 					log.Debug("upload file already exist, rm it first...")
 					shell := "rm -fr " + upload
-					log.Debug("run cmd", shell)
+					log.Debug("run cmd ", shell)
 					cmd := exec.Command("sh", "-c", shell)
 					_, e := cmd.CombinedOutput()
 					if e != nil {

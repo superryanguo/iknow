@@ -32,7 +32,10 @@ func TokenCreate() string {
 	token := fmt.Sprintf("%x", h.Sum(nil))
 	return token
 }
-func CheckFileName(prefix string) bool {
-	//TODO:
-	return true
+func CheckFileName(suffix string) bool {
+	//TODO: to fill this func
+	if suffix == ".dec" {
+		return true
+	}
+	return false
 }
