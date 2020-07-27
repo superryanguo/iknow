@@ -2,6 +2,7 @@ package datareader
 
 import (
 	"encoding/gob"
+	"flag"
 	"os"
 
 	log "github.com/micro/go-micro/v2/logger"
@@ -54,18 +55,19 @@ func (a *AccRecd) ShowData() {
 }
 
 var DataLib AccRecd
-var Gbfile string = "./tmp/data.gb"
 
 func init() {
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.InfoLevel)
+	//log.SetOutput(os.Stdout)
+	//log.SetLevel(log.InfoLevel)
 	//log.SetLevel(log.DebugLevel)
 	DataLib.RecData = make(map[string][]string)
 }
 
 func main() {
-	log.Debug("KickOff the DataReader...")
-	err := DataLib.ReadFile(Gbfile)
+	file := flag.String("file", "../datastore/data.gb", "Data file path")
+	flag.Parse()
+	log.Debug("KickOff the DataReader...", *file)
+	err := DataLib.ReadFile(*file)
 	if err != nil {
 		log.Warn(err)
 		return

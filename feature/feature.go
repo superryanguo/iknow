@@ -404,8 +404,8 @@ func TransformFeaturePure(c []FeatureRaw) ([]FeaturePure, error) {
 		}
 	})
 
-	var cn FeatureRawChain = c
-	cn.Print()
+	//var cn FeatureRawChain = c
+	//cn.Print()
 
 	if m0.Value != c[0].Value {
 		log.Debug("TransformFeaturePureMsg0=", c[0].Value)

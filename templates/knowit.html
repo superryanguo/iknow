@@ -52,7 +52,9 @@
             <div id="CodeArea">
                 <h2>MessageTemplate:</h2>
                 <textarea id="TestCode" name="bodyin" wrap="logical">
-{{.Template}}
+{{ range $tt := .Template.T }}
+{{.Seq}}  {{.MsgName}}  {{.Point}}
+{{ end }}
                 </textarea>
                 <span id="file-group" class="hidden">
                     *.dec log file: <input type="file" name="uploadfile" />
@@ -76,8 +78,14 @@
             <h2>Result:</h2>
             <textarea id="decoderesult" name="bodyout" wrap="logical", readonly="readonly">
 {{.Result}}
-{{.FeaRaw}}
-{{.FeaPur}}
++++++++++++++FeaRaw++++++++++++++++
+{{ range $fr := .FeaRaw }}
+{{.Time}}<-->{{.Nano}}<-->{{.Value}}
+{{ end }}
++++++++++++++FeaPur++++++++++++++++
+{{ range $fp := .FeaPur }}
+{{.Time}}<-->{{.Nano}}<-->{{.BoTime}}<-->{{.DeTime}}<-->{{.Value}}
+{{ end }}
             </textarea>
         </div>
 
