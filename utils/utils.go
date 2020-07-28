@@ -4,9 +4,11 @@ import (
 	"crypto/md5"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,6 +27,7 @@ func Runshell(shell string) ([]byte, error) {
 	}
 	return output, nil
 }
+
 func TokenCreate() string {
 	ct := time.Now().Unix()
 	h := md5.New()
@@ -32,10 +35,20 @@ func TokenCreate() string {
 	token := fmt.Sprintf("%x", h.Sum(nil))
 	return token
 }
-func CheckFileName(suffix string) bool {
-	//TODO: to fill this func
-	if suffix == ".dec" {
-		return true
+
+func FilterFileList(path, suffix string) ([]string, error) {
+	var files []string
+
+	fileInfo, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
 	}
-	return false
+
+	for _, file := range fileInfo {
+		if strings.HasSuffix(file.Name(), suffix) {
+			files = append(files, file.Name())
+		}
+	}
+
+	return files, nil
 }

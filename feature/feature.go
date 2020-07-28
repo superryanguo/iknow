@@ -16,7 +16,7 @@ import (
 	"github.com/superryanguo/iknow/utils"
 )
 
-var MsgMap FeatureMsgMap
+var MsgMap FeatureMsgMap //TODO:if multi-user, will it conflict?! Make it per user?!
 var MsgTpt FeatureTemplate
 
 const (

@@ -4,42 +4,53 @@ import (
 	"fmt"
 
 	log "github.com/micro/go-micro/v2/logger"
-	"github.com/superryanguo/iknow/config"
 	"github.com/superryanguo/iknow/feature"
 	"github.com/superryanguo/iknow/utils"
 )
 
-var logfile = "./testdata/sGnb.log"
-
 const (
 	MaxMatch = 100
+	Dec      = ".dec"
 )
 
-func Process() {
-	config.Init()
-	//log.Info("Host:", config.GetProgramConfig().GetHost())
-	log.Info("TemplateFilePath:", config.GetProgramConfig().GetTemplatePath())
-	file := config.GetProgramConfig().GetTemplatePath()
-	if !utils.CheckFileExist(file) {
-		log.Info("TemplateFileNotExist!")
-		return
-	}
-
+//BuildSvmTrainData build the output file with the input train data folder
+//the file's name will show its svm class:+1(PositiveSample)/-1
+func BuildSvmTrainData(input, output, tmpt string) error {
 	var err error
-	feature.MsgTpt, err = feature.ExtractFeatureTemplate(file)
+	//tmptfile := "train/" + tmpt
+	//log.Debug("BuildSvmTrainData TmptFilename=", tmptfile)
+
+	feature.MsgTpt, err = feature.ExtractFeatureTemplate(tmpt)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	feature.MsgTpt.Print()
 	feature.MsgMap.Build(feature.MsgTpt)
 	feature.MsgMap.Print()
-	l, err := feature.CaptureFeautres(logfile)
+
+	//1st step: check how many *.dec log in the folder
+	decfiles, err := utils.FilterFileList(input, Dec)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	fmt.Println("+++++++++++++++")
-	fmt.Println(l)
-	fmt.Println("+++++++++++++++")
+
+	//2nd step: capture the features and covert it to svm feature
+	for k, v := range decfiles {
+		log.Debug("BuildSvmTrainData_", k, ":", v)
+		fr, err := feature.CaptureFeautres("./testdata/" + v)
+		if err != nil {
+			return err
+		}
+		feature.FeatureRawChain(fr).Print()
+		fp, err := feature.TransformFeaturePure(feature.PureDuplicate(fr))
+		if err != nil {
+			return err
+		}
+		feature.FeaturePureChain(fp).Print()
+	}
+
+	//libSvm.No
+	return nil
 
 }
 
