@@ -13,6 +13,7 @@ import (
 
 	dstore "github.com/superryanguo/iknow/datastore"
 	"github.com/superryanguo/iknow/feature"
+	"github.com/superryanguo/iknow/learning"
 
 	log "github.com/micro/go-micro/v2/logger"
 	"github.com/superryanguo/iknow/config"
@@ -20,7 +21,13 @@ import (
 	"github.com/superryanguo/iknow/utils"
 )
 
-var LogFile string = "my.log"
+const (
+	LogFile    string = "my.log"
+	HoTgtModel string = "./train/train_model/HoTgt.Model"
+	HoSrcModel string = "./train/train_model/HoSrc.Model"
+	HoSrcTept  string = "./train/train_tempt/HoSrc.tmpt"
+	HoTgtTept  string = "./train/train_tempt/HoTgt.tmpt"
+)
 
 type DataContext struct {
 	Token    string
@@ -63,6 +70,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if r.Method == "POST" {
 		var context DataContext
+		var mdfile, tmptfile string
 		e = r.ParseForm()
 		if e != nil {
 			http.Error(w, e.Error(), http.StatusInternalServerError)
@@ -85,13 +93,33 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			context.Returncode = "cookie read error" + e.Error()
 			goto SHOW
 		}
-		context.Template, e = feature.ExtractFeatureTemplateHtml(bodyin)
-		if e != nil {
-			log.Warn(e)
-			context.Returncode = "InputDataError:" + e.Error()
-			//TODO: should the returncode method combine into below:
-			//http.Error(w, e.Error(), http.StatusInternalServerError)
-			goto SHOW
+
+		if model == "HoSrc" {
+			mdfile, tmptfile = HoSrcModel, HoSrcTept
+		} else if model == "HoTgt" {
+			mdfile, tmptfile = HoTgtModel, HoTgtTept
+		} else {
+			mdfile, tmptfile = "", "" //TODO: nothing
+		}
+
+		if mode == "MachineLearning" {
+			context.Template, e = feature.ExtractFeatureTemplate(tmptfile)
+			if e != nil {
+				log.Warn(e)
+				context.Returncode = "InputDataError:" + e.Error()
+				//TODO: should the returncode method combine into below:
+				//http.Error(w, e.Error(), http.StatusInternalServerError)
+				goto SHOW
+			}
+		} else {
+			context.Template, e = feature.ExtractFeatureTemplateHtml(bodyin)
+			if e != nil {
+				log.Warn(e)
+				context.Returncode = "InputDataError:" + e.Error()
+				//TODO: should the returncode method combine into below:
+				//http.Error(w, e.Error(), http.StatusInternalServerError)
+				goto SHOW
+			}
 		}
 		feature.MsgTpt = context.Template
 		feature.MsgMap.Build(feature.MsgTpt)
@@ -185,9 +213,16 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 				} else if mode == "MachineLearning" {
-					context.Returncode = "MachineLearning done!"
-					summary += "Succ"
-
+					ml, e := learning.SvmLearn(mdfile, context.FeaPur, context.Template)
+					if e != nil {
+						log.Warn(e)
+						context.Result = e.Error()
+						context.Returncode = fmt.Sprintf("TemplateMatch Error:%s", e.Error())
+					} else {
+						context.Result = "MachineLearning Successfully! Result=" + fmt.Sprintf("%f", ml)
+						context.Returncode = "MachineLearning done!" + fmt.Sprintf("%f", ml)
+						summary += "Succ" + fmt.Sprintf("%f", ml)
+					}
 				} else {
 					log.Warn("Unknow parse mode")
 					context.Returncode = "Unknown parse mode!"

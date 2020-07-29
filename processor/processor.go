@@ -2,6 +2,9 @@ package processor
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
 	log "github.com/micro/go-micro/v2/logger"
 	"github.com/superryanguo/iknow/feature"
@@ -9,14 +12,19 @@ import (
 )
 
 const (
-	MaxMatch = 100
-	Dec      = ".dec"
+	MaxMatch      = 100
+	Dec           = ".dec"
+	PosClass      = "+1" //Else name
+	NegClass      = "-1" //If name has NegativeClass string
+	NagtiveSymbol = "NegativeClass"
+	MatrixD       = 3
 )
 
 //BuildSvmTrainData build the output file with the input train data folder
 //the file's name will show its svm class:+1(PositiveSample)/-1
 func BuildSvmTrainData(input, output, tmpt string) error {
 	var err error
+	var label string
 	//tmptfile := "train/" + tmpt
 	//log.Debug("BuildSvmTrainData TmptFilename=", tmptfile)
 
@@ -34,10 +42,17 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 		return err
 	}
 
+	f, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
 	//2nd step: capture the features and covert it to svm feature
 	for k, v := range decfiles {
 		log.Debug("BuildSvmTrainData_", k, ":", v)
-		fr, err := feature.CaptureFeautres("./testdata/" + v)
+		//TODO: use the full path for the file will better
+		fr, err := feature.CaptureFeautres("./train_data/HoTgt/" + v)
+		//fr, err := feature.CaptureFeautres("./testdata/" + v)
 		if err != nil {
 			return err
 		}
@@ -47,10 +62,83 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 			return err
 		}
 		feature.FeaturePureChain(fp).Print()
+
+		if find := strings.Contains(v, NagtiveSymbol); find {
+			label = NegClass
+		} else {
+			label = PosClass
+		}
+		log.Debug("Sample Lable:", label)
+		r, err := MapFeatPurFullToDeSvm(fp, feature.MsgTpt)
+		if err != nil {
+			return err
+		}
+		log.Debug("SVM Feature:", label+" "+r)
+		_, err = f.WriteString(label + " " + r + "\n")
+		if err != nil {
+			return err
+		}
+
 	}
 
-	//libSvm.No
 	return nil
+
+}
+
+//MapFeatPurFullToBoSvm map the FeaturePure to SVM lib formate string
+//we use the full feature to descibe the msgexist/seq/time
+//template will the matrix mother template, each msg 3 features
+func MapFeatPurFullToBoSvm(fr feature.FeaturePureChain, t feature.FeatureTemplate) (string, error) {
+	var result string
+	var index int = 1
+
+	for i := 0; i < len(t.T); i++ {
+		msg := t.T[i].MsgName
+		var r string
+		for k, v := range fr {
+			if v.Value == msg { //message exist
+				r += strconv.Itoa(MatrixD*i+index) + ":" + "1" + " "                 //1 means message exist
+				r += strconv.Itoa(MatrixD*i+index+1) + ":" + strconv.Itoa(k+1) + " " //seq number
+				if v.BoTime == 0 {
+					r += strconv.Itoa(MatrixD*i+index+2) + ":" + "1" + " " //TODO: Ajust Detime 0 to 1, will it be good?
+				} else {
+					r += strconv.Itoa(MatrixD*i+index+2) + ":" + strconv.FormatInt(v.BoTime, 10) + " " //Detime
+				}
+			}
+		}
+		result += r
+	}
+	return result, nil
+}
+
+//MapFeatPurFullToDeSvm map the FeaturePure to SVM lib formate string
+//we use the full feature to descibe the msgexist/seq/time
+//template will the matrix mother template, each msg 3 features
+func MapFeatPurFullToDeSvm(fr feature.FeaturePureChain, t feature.FeatureTemplate) (string, error) {
+	var result string
+	var index int = 1
+
+	for i := 0; i < len(t.T); i++ {
+		msg := t.T[i].MsgName
+		var r string
+		for k, v := range fr {
+			if v.Value == msg { //message exist
+				r += strconv.Itoa(MatrixD*i+index) + ":" + "1" + " "                 //1 means message exist
+				r += strconv.Itoa(MatrixD*i+index+1) + ":" + strconv.Itoa(k+1) + " " //seq number
+				if v.DeTime == 0 {
+					r += strconv.Itoa(MatrixD*i+index+2) + ":" + "1" + " " //TODO: Ajust Detime 0 to 1, will it be good?
+				} else {
+					r += strconv.Itoa(MatrixD*i+index+2) + ":" + strconv.FormatInt(v.DeTime, 10) + " " //Detime
+				}
+			}
+		}
+		result += r
+	}
+	return result, nil
+}
+
+//TODO: Scale the int to float in the featurepure
+func SvmScale() {
 
 }
 

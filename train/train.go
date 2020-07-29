@@ -42,14 +42,14 @@ func main() {
 	}
 
 	file := traindata + "/" + Trainfile
-	log.Debug("traindatafile=", file)
+	log.Debug("trained_data_file=", file)
 	err := processor.BuildSvmTrainData(traindata, file, traintmpt)
 	if err != nil {
 		log.Fatal("BuildSvmTrainDataErr:", err)
 	}
 	problem, err := libSvm.NewProblem(file, svmpara)
 	if err != nil {
-		log.Println("ProblemCreateErr:", err)
+		log.Info("ProblemCreateErr:", err)
 		return
 	}
 

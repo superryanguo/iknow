@@ -12,6 +12,9 @@ processor/testdata
 iknow
 runcmd/*
 train/train_tempt/*
+train/train_data
+train/train
+train/train_model
 datastore/data.gb
 datareader/datareader
 
