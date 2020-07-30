@@ -49,10 +49,8 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 	defer f.Close()
 	//2nd step: capture the features and covert it to svm feature
 	for k, v := range decfiles {
-		log.Debug("BuildSvmTrainData_", k, ":", v)
-		//TODO: use the full path for the file will better
-		fr, err := feature.CaptureFeautres("./train_data/HoTgt/" + v)
-		//fr, err := feature.CaptureFeautres("./testdata/" + v)
+		log.Debug("BuildSvmTrainData_", k, ":", input+"/"+v)
+		fr, err := feature.CaptureFeautres(input + "/" + v)
 		if err != nil {
 			return err
 		}
