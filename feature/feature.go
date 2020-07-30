@@ -58,9 +58,10 @@ type FeaturePureChain []FeaturePure
 type FeaturePure struct {
 	Time   time.Time //Message Time
 	Nano   int64
-	BoTime int64  //delta time from the msg0
-	DeTime int64  //delta time from the previous msg
-	Value  string //message value from a map
+	BoTime int64   //delta time from the msg0
+	DeTime int64   //delta time from the previous msg
+	Value  string  //message value from a map
+	NorVal float64 //normalize feature value
 	Flag   int
 }
 
@@ -120,6 +121,49 @@ func (m FeaturePureChain) Print() {
 		fmt.Printf("%d ------> %v\n", k, v)
 	}
 	fmt.Println("++++++++++++++++++++++++++++++++++")
+}
+
+//SvmScaleDeTimeNormalize map the detime to the range 1-2
+//TODO: it's better we can handle the negative value to indicate the time before the next message
+//Scale the int to float in the featurepure
+func (fr *FeaturePureChain) SvmDeTimeNormalize(min, max int64) error {
+	delta := float64(max - min)
+	if len(*fr) == 0 {
+		return errors.New("the FeaturePureChain length is zero!")
+	}
+
+	var big, small int64
+	for k, v := range *fr {
+		if k == 0 {
+			big = v.DeTime
+			small = v.DeTime
+		}
+
+		if big < v.DeTime {
+			big = v.DeTime
+		}
+
+		if small > v.DeTime {
+			small = v.DeTime
+		}
+	}
+
+	//if 0, should be ajust to 1
+	//if samll==0{
+	//small=1
+	//}
+
+	log.Debug("SvmDeTimeNormalize Small: ", small, " Big: ", big)
+
+	//for _, v := range *fr {
+	//v.NorVal = delta*float64(v.DeTime-small)/float64(big-small) + float64(min)
+	//log.Debug("SvmDeTimeNormalize NorVal ", v.NorVal)
+	//}
+	for i := 0; i < len(*fr); i++ {
+		(*fr)[i].NorVal = delta*float64((*fr)[i].DeTime-small)/float64(big-small) + float64(min)
+	}
+
+	return nil
 }
 
 func CheckDuplicateMsg(t FeatureTemplate) error {
@@ -226,7 +270,9 @@ func BuildTestStatus(r FeaturePureChain) (fs FeatureTestStatus) {
 	return
 }
 
-func CaptureFeautres(file string) ([]FeatureRaw, error) {
+//CaptureFeautres capture the feature raw from a file
+//if full false, we just capture from the msg0
+func CaptureFeautres(file string, full bool) ([]FeatureRaw, error) {
 
 	if !utils.CheckFileExist(file) {
 		return nil, errors.New("Log file not exist")
@@ -297,6 +343,23 @@ func CaptureFeautres(file string) ([]FeatureRaw, error) {
 		}
 	}
 
+	//if full false, we need the msg0 as the start point
+	if !full {
+		if len(MsgTpt.T) == 0 {
+			return t, errors.New("MsgTpt not init!")
+		}
+		msg0 := MsgTpt.T[0].MsgName
+		index := 0
+		for w := 0; w < len(t); w++ {
+			if t[w].Value == msg0 {
+				index = w
+				log.Debug("Find the FeatureRaw start point is index=", index)
+				break
+			}
+		}
+		return t[index:], nil
+
+	}
 	return t, nil
 }
 

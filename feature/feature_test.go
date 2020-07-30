@@ -60,6 +60,7 @@ func TestCaputre(t *testing.T) {
 	fn := "../processor/testdata/sGnb.log"
 	tptfile := "../processor/testdata/ho.tmpt"
 
+	//TODO: why not the same as feature.MsgTpt?!! bug? the feature package not share the global value in test package?!
 	MsgTpt, err := ExtractFeatureTemplate(tptfile)
 	if err != nil {
 		t.Error("TestCaputre:", err)
@@ -68,7 +69,7 @@ func TestCaputre(t *testing.T) {
 	MsgTpt.Print()
 	MsgMap.Build(MsgTpt)
 	MsgMap.Print()
-	l, err := CaptureFeautres(fn)
+	l, err := CaptureFeautres(fn, false)
 	if err != nil {
 		t.Error("TestCaputre:", err)
 		return

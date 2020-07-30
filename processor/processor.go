@@ -42,6 +42,14 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 		return err
 	}
 
+	if utils.CheckFileExist(output) {
+		log.Debug("FileExist, remove", output, "first")
+		err := os.Remove(output)
+		if err != nil {
+			return err
+		}
+	}
+
 	f, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		return err
@@ -50,7 +58,7 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 	//2nd step: capture the features and covert it to svm feature
 	for k, v := range decfiles {
 		log.Debug("BuildSvmTrainData_", k, ":", input+"/"+v)
-		fr, err := feature.CaptureFeautres(input + "/" + v)
+		fr, err := feature.CaptureFeautres(input+"/"+v, false)
 		if err != nil {
 			return err
 		}
@@ -60,6 +68,9 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 			return err
 		}
 		feature.FeaturePureChain(fp).Print()
+		var fpn feature.FeaturePureChain = fp
+		fpn.SvmDeTimeNormalize(1, 2)
+		//log.Debug("fpn:", fpn)
 
 		if find := strings.Contains(v, NagtiveSymbol); find {
 			label = NegClass
@@ -67,7 +78,7 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 			label = PosClass
 		}
 		log.Debug("Sample Lable:", label)
-		r, err := MapFeatPurFullToDeSvm(fp, feature.MsgTpt)
+		r, err := MapFeatPurFullToDeSvmFloat(fpn, feature.MsgTpt)
 		if err != nil {
 			return err
 		}
@@ -109,6 +120,31 @@ func MapFeatPurFullToBoSvm(fr feature.FeaturePureChain, t feature.FeatureTemplat
 	return result, nil
 }
 
+//TODO: how to hanlde circles in the feature pure, such as msg0-msg3-msg0-msg5,
+//we need to split into serveral svm feature, but not to combine it into one
+func CircleSplitFeature() {
+
+}
+
+func MapFeatPurFullToDeSvmFloat(fr feature.FeaturePureChain, t feature.FeatureTemplate) (string, error) {
+	var result string
+	var index int = 1
+
+	for i := 0; i < len(t.T); i++ {
+		msg := t.T[i].MsgName
+		var r string
+		for k, v := range fr {
+			if v.Value == msg { //message exist
+				r += strconv.Itoa(MatrixD*i+index) + ":" + "1" + " "                             //1 means message exist
+				r += strconv.Itoa(MatrixD*i+index+1) + ":" + strconv.Itoa(k+1) + " "             //seq number
+				r += strconv.Itoa(MatrixD*i+index+2) + ":" + fmt.Sprintf("%.6f", v.NorVal) + " " //Detime
+			}
+		}
+		result += r
+	}
+	return result, nil
+}
+
 //MapFeatPurFullToDeSvm map the FeaturePure to SVM lib formate string
 //we use the full feature to descibe the msgexist/seq/time
 //template will the matrix mother template, each msg 3 features
@@ -133,11 +169,6 @@ func MapFeatPurFullToDeSvm(fr feature.FeaturePureChain, t feature.FeatureTemplat
 		result += r
 	}
 	return result, nil
-}
-
-//TODO: Scale the int to float in the featurepure
-func SvmScale() {
-
 }
 
 //TemplateMatch compare the resutl with the template, see if they match

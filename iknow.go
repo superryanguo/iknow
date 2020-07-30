@@ -178,7 +178,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				f.Close()
 				context.Returncode = "upload file done"
 
-				context.FeaRaw, e = feature.CaptureFeautres(upload)
+				context.FeaRaw, e = feature.CaptureFeautres(upload, false)
 				if e != nil {
 					context.Result = e.Error()
 					context.Returncode = "CaputreFeatures Fail!"
