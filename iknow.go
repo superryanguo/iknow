@@ -48,6 +48,7 @@ func init() {
 func KnowHandler(w http.ResponseWriter, r *http.Request) {
 	var e error
 	var summary string
+	var fpn feature.FeaturePureChain
 	ti := time.Now().Format("2006-01-02 15:04:05")
 	if r.Method == "GET" {
 		if r.RequestURI != "/favicon.ico" {
@@ -185,12 +186,14 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 					goto SHOW
 				}
 				context.FeaRaw.Print()
-				context.FeaPur, e = feature.TransformFeaturePure(feature.PureDuplicate(context.FeaRaw))
+				fpn, e = feature.TransformFeaturePure(feature.PureDuplicate(context.FeaRaw))
 				if e != nil {
 					context.Result = e.Error()
 					context.Returncode = "TransformFeaturePure Fail!"
 					goto SHOW
 				}
+				fpn.SvmDeTimeNormalize(1, 2)
+				context.FeaPur = fpn
 				context.FeaPur.Print()
 				//run cmd for what you want
 				if mode == "TemplateMatch" {

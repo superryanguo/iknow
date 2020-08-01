@@ -16,7 +16,8 @@ func SvmLearn(md string, fr feature.FeaturePureChain, t feature.FeatureTemplate)
 
 	model := libSvm.NewModelFromFile(md)
 
-	r, err := processor.MapFeatPurFullToDeSvm(fr, t)
+	//r, err := processor.MapFeatPurFullToDeSvm(fr, t)
+	r, err := processor.MapFeatPurFullToDeSvmFloat(fr, t)
 	if err != nil {
 		return 0, err
 	}
