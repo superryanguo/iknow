@@ -29,7 +29,7 @@ func SvmLearn(md string, fr feature.FeaturePureChain, t feature.FeatureTemplate)
 
 	log.Debug("SvmLearn TestVector x:=", x)
 	predictLabel := model.Predict(x) // Predicts a float64 label given the test vector
-	log.Debug("Result=", predictLabel)
+	log.Debug("ResultLabel=", predictLabel)
 	return predictLabel, nil
 }
 

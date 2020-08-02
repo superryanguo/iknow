@@ -66,6 +66,9 @@
                 <input type="radio" name="Model" value="HoSrc" /> Handover-Src
                 <input type="radio" name="Model" value="HoTgt" /> Handover-Tgt
                 <input type="radio" name="Model" value="Non-Ho" /> Other
+                <br>TrainingLabel:
+                <input type="radio" name="SampleLabel" value="Positive" />+1 
+                <input type="radio" name="SampleLabel" value="Negative" />-1
                 <div id="butt">
                     <input onclick="pbfunction()" type="submit" value="Analyze" />
                     <input type="hidden" name="CSRFToken" value="{{.Token}}" />

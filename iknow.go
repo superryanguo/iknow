@@ -47,7 +47,7 @@ func init() {
 
 func KnowHandler(w http.ResponseWriter, r *http.Request) {
 	var e error
-	var summary string
+	var summary, mlabel string
 	var fpn feature.FeaturePureChain
 	ti := time.Now().Format("2006-01-02 15:04:05")
 	if r.Method == "GET" {
@@ -82,6 +82,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 		formToken := template.HTMLEscapeString(r.Form.Get("CSRFToken"))
 		mode := template.HTMLEscapeString(r.Form.Get("Mode"))
 		model := template.HTMLEscapeString(r.Form.Get("Model"))
+		mlabel = template.HTMLEscapeString(r.Form.Get("SampleLabel"))
 		context.Token = formToken
 		n := strings.Split(r.RemoteAddr, ":")[0] + "-" + strings.TrimLeft(strings.Fields(r.UserAgent())[1], "(")
 		uname := strings.TrimRight(n, ";")
@@ -155,6 +156,9 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				}
 				context.Returncode = "create the dir done"
 				upload := "./runcmd/" + formToken + "/" + LogFile
+				if mode == "MachineLearning" {
+					upload = "./runcmd/" + formToken + "/" + mlabel + LogFile
+				}
 				_, e := os.Stat(upload)
 				if e == nil {
 					log.Debug("upload file already exist, rm it first...")
@@ -222,9 +226,9 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 						context.Result = e.Error()
 						context.Returncode = fmt.Sprintf("TemplateMatch Error:%s", e.Error())
 					} else {
-						context.Result = "MachineLearning Successfully! Result=" + fmt.Sprintf("%f", ml)
-						context.Returncode = "MachineLearning done!" + fmt.Sprintf("%f", ml)
-						summary += "Succ" + fmt.Sprintf("%f", ml)
+						context.Result = "MachineLearning Successfully! ResultLabel=" + fmt.Sprintf("%f", ml)
+						context.Returncode = "MachineLearning done!" + fmt.Sprintf("Label:%f", ml)
+						summary += "Succ" + fmt.Sprintf("|Label:%f", ml)
 					}
 				} else {
 					log.Warn("Unknow parse mode")
