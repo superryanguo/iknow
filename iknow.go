@@ -77,7 +77,8 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, e.Error(), http.StatusInternalServerError)
 			return
 		}
-		r.ParseMultipartForm(32 << 20) //defined maximum size of file
+		//Make sure the file's size is not that big, such as <100M
+		r.ParseMultipartForm(64 << 20) //defined maximum size of file
 		context.Returncode = "Form Parse done"
 		formToken := template.HTMLEscapeString(r.Form.Get("CSRFToken"))
 		mode := template.HTMLEscapeString(r.Form.Get("Mode"))
@@ -114,13 +115,23 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				goto SHOW
 			}
 		} else {
-			context.Template, e = feature.ExtractFeatureTemplateHtml(bodyin)
-			if e != nil {
-				log.Warn(e)
-				context.Returncode = "InputDataError:" + e.Error()
-				//TODO: should the returncode method combine into below:
-				//http.Error(w, e.Error(), http.StatusInternalServerError)
-				goto SHOW
+			if len(bodyin) == 0 && len(model) != 0 {
+				context.Template, e = feature.ExtractFeatureTemplate(tmptfile)
+				if e != nil {
+					log.Warn(e)
+					context.Returncode = "InputDataError:" + e.Error()
+					goto SHOW
+				}
+			} else {
+				context.Template, e = feature.ExtractFeatureTemplateHtml(bodyin)
+				if e != nil {
+					log.Warn(e)
+					context.Returncode = "InputDataError:" + e.Error()
+					//TODO: should the returncode method combine into below:
+					//http.Error(w, e.Error(), http.StatusInternalServerError)
+					goto SHOW
+				}
+
 			}
 		}
 		feature.MsgTpt = context.Template
@@ -183,12 +194,17 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				f.Close()
 				context.Returncode = "upload file done"
 
-				context.FeaRaw, e = feature.CaptureFeautres(upload, false)
+				context.FeaRaw, e = feature.CaptureFeatures(upload, false)
 				if e != nil {
 					context.Result = e.Error()
 					context.Returncode = "CaputreFeatures Fail!"
 					goto SHOW
+				} else if len(context.FeaRaw) == 0 {
+					context.Result = "Empty Feature Captured, return"
+					context.Returncode = "Empty Feature Captured, return"
+					goto SHOW
 				}
+
 				context.FeaRaw.Print()
 				fpn, e = feature.TransformFeaturePure(feature.PureDuplicate(context.FeaRaw))
 				if e != nil {

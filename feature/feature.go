@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"regexp"
 	"sort"
@@ -230,6 +231,9 @@ func ExtractFeatureTemplate(file string) (t FeatureTemplate, e error) {
 
 }
 func ExtractFeatureTemplateHtml(input string) (t FeatureTemplate, err error) {
+	if len(input) == 0 {
+		return FeatureTemplate{nil}, errors.New("Empty Template Input String")
+	}
 	t.T = make([]Template, TptSize, TptCap)
 	datas := strings.Split(input, "\n")
 
@@ -255,7 +259,9 @@ func ExtractFeatureTemplateHtml(input string) (t FeatureTemplate, err error) {
 
 		t.T = append(t.T, j)
 	}
-
+	if len(t.T) == 0 {
+		return FeatureTemplate{nil}, errors.New("Empty Template Input")
+	}
 	return t, nil
 }
 
@@ -270,9 +276,83 @@ func BuildTestStatus(r FeaturePureChain) (fs FeatureTestStatus) {
 	return
 }
 
-//CaptureFeautres capture the feature raw from a file
+//CaptureFeatures make a exact split file with the first timestamp in logs
+func CaptureFeatures(file string, full bool) ([]FeatureRaw, error) {
+	if !utils.CheckFileExist(file) {
+		return nil, errors.New("Log file not exist")
+	}
+
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	if len(MsgMap.M) == 0 {
+		return nil, errors.New("MsgMap is empety, pls init it")
+	}
+
+	r, err := SeekTimeSlam(f, 100)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(r) == 0 {
+		return nil, errors.New("wrong length of the SeekTimeSlam result")
+	}
+
+	t := make([]FeatureRaw, TptSize, TptCap)
+
+	for _, w := range r {
+		s := strings.Fields(w)
+		for _, v := range s {
+			if _, ok := MsgMap.M[v]; ok {
+				var raw FeatureRaw
+				raw.Value = v
+				rt, err := PickFirstTime(w)
+				if err != nil {
+					return nil, err
+				}
+				wt := strings.Replace(strings.Replace(rt, "[", "", -1), "]", "", -1)
+				log.Debug("CaptureFeatures time:", wt, "value=", v)
+				raw.Time, raw.Nano, err = FindTimeNano(wt)
+				if err != nil {
+					return nil, fmt.Errorf("FindTimeNano Error:%s", err)
+				}
+				t = append(t, raw)
+
+			}
+		}
+	}
+
+	//if full false, we need the msg0 as the start point
+	if !full {
+		if len(MsgTpt.T) == 0 {
+			return t, errors.New("MsgTpt not init!")
+		}
+		msg0 := MsgTpt.T[0].MsgName
+		index := 0
+		for w := 0; w < len(t); w++ {
+			if t[w].Value == msg0 {
+				index = w
+				log.Debug("Find the FeatureRaw start point is index=", index)
+				break
+			}
+		}
+		return t[index:], nil
+
+	}
+	return t, nil
+}
+
+//CaptureFeaturesSlice capture the feature raw from a file
 //if full false, we just capture from the msg0
-func CaptureFeautres(file string, full bool) ([]FeatureRaw, error) {
+func CaptureFeaturesSlice(file string, full bool) ([]FeatureRaw, error) {
 
 	if !utils.CheckFileExist(file) {
 		return nil, errors.New("Log file not exist")
@@ -331,7 +411,7 @@ func CaptureFeautres(file string, full bool) ([]FeatureRaw, error) {
 							continue
 						}
 						w := strings.Replace(strings.Replace(rt, "[", "", -1), "]", "", -1)
-						log.Debug("CaptureFeautres time:", w)
+						log.Debug("CaptureFeatures time:", w)
 						raw.Time, raw.Nano, err = FindTimeNano(w)
 						if err != nil {
 							return nil, fmt.Errorf("FindTimeNano Error:%s", err)
@@ -363,7 +443,34 @@ func CaptureFeautres(file string, full bool) ([]FeatureRaw, error) {
 	return t, nil
 }
 
+func SeekTimeSlam(file *os.File, size int64) ([]string, error) {
+	var logs []string
+	rp := regexp.MustCompile(regx)
+	buffer, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	sr := rp.FindAllIndex(buffer, -1)
+	if sr != nil {
+		for i := 0; i < len(sr); i++ {
+			var log []byte
+			if i == len(sr)-1 {
+				log = buffer[sr[i][0]:]
+			} else {
+				log = buffer[sr[i][0]:(sr[i+1][0] - 1)]
+			}
+			logs = append(logs, string(log))
+		}
+		return logs, nil
+	}
+
+	return nil, errors.New("Empty TimeStamp Strings")
+}
+
 //SeekTime search the most close timestamp before current position
+//TODO: make the split more precise, such as use the timestamp to split the files' lines
+//if with the fixed size, it still will make the wrong timestamp
 func SeekTime(file *os.File, size int64) (string, error) {
 	buffer := make([]byte, size)
 	cpos, err := file.Seek(0, 1)
@@ -377,12 +484,12 @@ func SeekTime(file *os.File, size int64) (string, error) {
 	var result string
 
 	for npos > 0 {
-		log.Debug("npos=", npos, "size=", size)
-		_, err := file.ReadAt(buffer, npos)
+		log.Debug("npos=", npos, " size=", size)
+		length, err := file.ReadAt(buffer, npos)
 		if err != nil {
 			return "", err
 		}
-		//log.Debugf("Read %d buffer=>%s", length, buffer)
+		log.Debugf("Read %d buffer=>%s", length, buffer)
 		sr := rp.FindAllString(string(buffer), -1)
 		if sr != nil {
 			l := len(sr)
@@ -420,6 +527,20 @@ func SeekTime(file *os.File, size int64) (string, error) {
 	}
 
 	return result, nil
+}
+
+func PickFirstTime(t string) (string, error) {
+	var result string
+	var err error
+	rp := regexp.MustCompile(regx)
+	sr := rp.FindAllString(t, -1)
+	if sr != nil {
+		result = sr[0]
+		log.Debug("Found closest timestamp", result)
+	} else {
+		err = errors.New("No TimeStamp in the string")
+	}
+	return result, err
 }
 
 func FindTimeNano(t string) (time.Time, int64, error) {

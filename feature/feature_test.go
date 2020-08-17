@@ -6,6 +6,29 @@ import (
 	"testing"
 )
 
+func TestSeekTimeSlam(t *testing.T) {
+	fn := "../processor/testdata/sGnb.log"
+
+	f, err := os.Open(fn)
+	if err != nil {
+		t.Error("SeekTimeSlamErr:", err)
+		return
+	}
+
+	defer f.Close()
+
+	r, err := SeekTimeSlam(f, 100)
+	if err != nil {
+		t.Error("SeekTimeSlamErr:", err)
+		return
+	}
+
+	for k, v := range r {
+		fmt.Println(k, "->", v)
+		fmt.Println("")
+	}
+}
+
 func TestSeekTime(t *testing.T) {
 	fn := "../processor/testdata/sGnb.log"
 
@@ -69,7 +92,7 @@ func TestCaputre(t *testing.T) {
 	MsgTpt.Print()
 	MsgMap.Build(MsgTpt)
 	MsgMap.Print()
-	l, err := CaptureFeautres(fn, false)
+	l, err := CaptureFeatures(fn, false)
 	if err != nil {
 		t.Error("TestCaputre:", err)
 		return

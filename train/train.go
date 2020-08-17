@@ -10,6 +10,8 @@ import (
 )
 
 const (
+	SrcHoTestPath = "test_data/HoSrc"
+	TgtHoTestPath = "test_data/HoTgt"
 	SrcHoDataPath = "train_data/HoSrc"
 	TgtHoDataPath = "train_data/HoTgt"
 	SrcHoTmptPath = "train_tempt/HoSrc.tmpt"
@@ -19,21 +21,17 @@ const (
 	Trainfile     = "svm.train"
 )
 
-func main() {
-	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc")
-	flag.Parse()
-
-	log.Debug("flag input=", *hotype)
+func TrainModel(t string) {
 	svmpara := libSvm.NewParameter()
 	svmpara.KernelType = libSvm.POLY
 	model := libSvm.NewModel(svmpara)
 
 	var traindata, traintmpt, trainmodel string
-	if *hotype == "hotgt" {
+	if t == "hotgt" {
 		traindata = TgtHoDataPath
 		traintmpt = TgtHoTmptPath
 		trainmodel = TgtHoModel
-	} else if *hotype == "hosrc" {
+	} else if t == "hosrc" {
 		traindata = SrcHoDataPath
 		traintmpt = SrcHoTmptPath
 		trainmodel = SrcHoModel
@@ -61,6 +59,30 @@ func main() {
 	err = model.Dump(trainmodel)
 	if err != nil {
 		log.Fatal("ModelTrainErr:", err)
+	}
+
+}
+
+func TestBenchmark(t string) error {
+	return nil
+}
+
+func main() {
+	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc")
+	//hybird will rotate the all data in the train and test folder to do train and test.
+	usage := flag.String("usage", "train", "Usage: train, test, hybird")
+	flag.Parse()
+
+	log.Debug("flag input=", *hotype, "|", *usage)
+	if *usage == "train" {
+		TrainModel(*hotype)
+	} else if *usage == "test" {
+		TestBenchmark(*hotype)
+		log.Info("test flag")
+	} else if *usage == "hybird" {
+		log.Info("hybird flag")
+	} else {
+		log.Info("Unsupported flag")
 	}
 
 }

@@ -58,7 +58,7 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 	//2nd step: capture the features and covert it to svm feature
 	for k, v := range decfiles {
 		log.Debug("BuildSvmTrainData_", k, ":", input+"/"+v)
-		fr, err := feature.CaptureFeautres(input+"/"+v, false)
+		fr, err := feature.CaptureFeatures(input+"/"+v, false)
 		if err != nil {
 			return err
 		}
