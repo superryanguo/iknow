@@ -5,6 +5,18 @@ import (
 	"testing"
 )
 
+func TestCountFileNum(t *testing.T) {
+	dir := "."
+	i, err := CountFileNum(dir)
+	if err != nil {
+		t.Error("TestCountFileNum:", err)
+		return
+	}
+	fmt.Println("FileNum:", i)
+	if i != 2 {
+		t.Error("Wrong number of files in path")
+	}
+}
 func TestFilterFileList(t *testing.T) {
 	flag := false
 	dir := "."

@@ -12,12 +12,14 @@ import (
 )
 
 const (
-	MaxMatch      = 100
-	Dec           = ".dec"
-	PosClass      = "+1" //Else name
-	NegClass      = "-1" //If name has NegativeClass string
-	NagtiveSymbol = "NegativeClass"
-	MatrixD       = 3
+	MaxMatch              = 100
+	Dec                   = ".dec"
+	PosValue      float64 = 1
+	NegValue      float64 = -1
+	PosClass              = "+1" //Else name
+	NegClass              = "-1" //If name has NegativeClass string
+	NagtiveSymbol         = "NegativeClass"
+	MatrixD               = 3
 )
 
 //BuildSvmTrainData build the output file with the input train data folder
