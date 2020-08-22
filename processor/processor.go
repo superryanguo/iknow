@@ -20,13 +20,18 @@ const (
 	NegClass              = "-1" //If name has NegativeClass string
 	NagtiveSymbol         = "NegativeClass"
 	MatrixD               = 3
+	NegF                  = "NegF"
+	PosF                  = "PosF"
 )
 
-//BuildSvmTrainData build the output file with the input train data folder
+//BuildSvmTrainData build the output file with the trainpath train data folder
 //the file's name will show its svm class:+1(PositiveSample)/-1
-func BuildSvmTrainData(input, output, tmpt string) error {
+//if trainfiles is not empty, we will use it as the training input
+//or just use the files under the trainpath
+func BuildSvmTrainData(trainpath, output, tmpt string, trainfiles []string) error {
 	var err error
 	var label string
+	var decfiles []string
 	//tmptfile := "train/" + tmpt
 	//log.Debug("BuildSvmTrainData TmptFilename=", tmptfile)
 
@@ -39,10 +44,6 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 	feature.MsgMap.Print()
 
 	//1st step: check how many *.dec log in the folder
-	decfiles, err := utils.FilterFileList(input, Dec)
-	if err != nil {
-		return err
-	}
 
 	if utils.CheckFileExist(output) {
 		log.Debug("FileExist, remove", output, "first")
@@ -57,10 +58,24 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 		return err
 	}
 	defer f.Close()
+
+	if len(trainfiles) == 0 { //TODO: to be improved
+		decfiles, err = utils.FilterFileList(trainpath, Dec)
+		if err != nil {
+			return err
+		}
+	} else {
+		decfiles = trainfiles
+	}
 	//2nd step: capture the features and covert it to svm feature
 	for k, v := range decfiles {
-		log.Debug("BuildSvmTrainData_", k, ":", input+"/"+v)
-		fr, err := feature.CaptureFeatures(input+"/"+v, false)
+		log.Debug("BuildSvmTrainData_", k, ":", trainpath+"/"+v)
+		var fr []feature.FeatureRaw
+		//if len(trainfiles) == 0 { //TODO: to be improved
+		//fr, err = feature.CaptureFeatures(trainpath+"/"+v, false)
+		//} else {
+		fr, err = feature.CaptureFeatures(v, false)
+		//}
 		if err != nil {
 			return err
 		}
@@ -74,7 +89,7 @@ func BuildSvmTrainData(input, output, tmpt string) error {
 		fpn.SvmDeTimeNormalize(1, 2)
 		//log.Debug("fpn:", fpn)
 
-		if find := strings.Contains(v, NagtiveSymbol); find {
+		if find := strings.Contains(v, NagtiveSymbol) || strings.Contains(v, NegF); find {
 			label = NegClass
 		} else {
 			label = PosClass

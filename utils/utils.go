@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
@@ -46,13 +47,21 @@ func FilterFileList(path, suffix string) ([]string, error) {
 
 	for _, file := range fileInfo {
 		if strings.HasSuffix(file.Name(), suffix) {
-			files = append(files, file.Name())
+			files = append(files, path+"/"+file.Name())
 		}
 	}
 
 	return files, nil
 }
 
+func Shuffle(a []string) {
+	for i := range a {
+		j := rand.Intn(i + 1)
+		a[i], a[j] = a[j], a[i]
+	}
+}
+
+//TODO: how to ignore the ignorefiles, such .swp
 func CountFileNum(path string) (int, error) {
 	i := 0
 	files, err := ioutil.ReadDir(path)

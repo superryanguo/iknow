@@ -26,7 +26,7 @@ func TestFilterFileList(t *testing.T) {
 		return
 	}
 	for k, v := range fl {
-		if v == "utils.go" {
+		if v == dir+"/"+"utils.go" {
 			flag = true
 		}
 		fmt.Println("File_", k, ":", v)

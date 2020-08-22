@@ -3,12 +3,11 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
+	"math/rand"
+	"time"
 
 	log "github.com/micro/go-micro/v2/logger"
-
-	libSvm "github.com/ewalker544/libsvm-go"
-	"github.com/superryanguo/iknow/feature"
-	"github.com/superryanguo/iknow/learning"
 	"github.com/superryanguo/iknow/processor"
 	"github.com/superryanguo/iknow/utils"
 )
@@ -23,14 +22,9 @@ const (
 	SrcHoModel    = "train_model/HoSrc.Model"
 	TgtHoModel    = "train_model/HoTgt.Model"
 	Trainfile     = "svm.train"
-	NegF          = "Neg"
-	PosF          = "Pos"
 )
 
 func TrainModel(t string) {
-	svmpara := libSvm.NewParameter()
-	svmpara.KernelType = libSvm.POLY
-	model := libSvm.NewModel(svmpara)
 
 	var traindata, traintmpt, trainmodel string
 	if t == "hotgt" {
@@ -44,32 +38,14 @@ func TrainModel(t string) {
 	} else {
 		log.Fatal("Unsupport data type")
 	}
-
-	file := traindata + "/" + Trainfile
-	log.Debug("trained_data_file=", file)
-	err := processor.BuildSvmTrainData(traindata, file, traintmpt)
+	err := TrainSvModel(traindata, traintmpt, trainmodel, nil)
 	if err != nil {
-		log.Fatal("BuildSvmTrainDataErr:", err)
-	}
-	problem, err := libSvm.NewProblem(file, svmpara)
-	if err != nil {
-		log.Info("ProblemCreateErr:", err)
-		return
-	}
-
-	err = model.Train(problem)
-	if err != nil {
-		log.Fatal("ModelTrainErr:", err)
-	}
-
-	err = model.Dump(trainmodel)
-	if err != nil {
-		log.Fatal("ModelTrainErr:", err)
+		log.Fatal(err)
 	}
 
 }
 
-func TestBenchmark(t string) error {
+func BenchmarkModel(t string) error {
 	var testdata, traintmpt, trainmodel string
 	if t == "hotgt" {
 		testdata = TgtHoTestPath
@@ -80,102 +56,99 @@ func TestBenchmark(t string) error {
 		traintmpt = SrcHoTmptPath
 		trainmodel = SrcHoModel
 	} else {
-		errors.New("Unsupport data type")
+		return errors.New("Unsupport data type")
 	}
-	testPos := testdata + "/" + PosF
-	testNeg := testdata + "/" + NegF
-	var numPos, numvPos, numNeg, numvNeg, numTotal int
-	var perNeg, perPos, perVerify float64
-	var err error
-
-	numPos, err = utils.CountFileNum(testPos)
+	r, err := BenchmarkSvModel(testdata, traintmpt, trainmodel, nil)
 	if err != nil {
 		return err
 	}
-	numNeg, err = utils.CountFileNum(testNeg)
-	if err != nil {
-		return err
-	}
-	numTotal = numPos + numNeg
-	if numTotal == 0 {
-		return errors.New("No test file found")
-	}
-	log.Info("numPos=", numPos, "numNeg=", numNeg)
+	r.Print()
+	s := CalPercent(r)
+	s.Print()
+	return nil
+}
 
-	feature.MsgTpt, err = feature.ExtractFeatureTemplate(traintmpt)
-	if err != nil {
-		return err
+func HybirdBenchmark(t string, tper float64) error {
+	var traindata, testdata, traintmpt, trainmodel string
+	if t == "hotgt" {
+		testdata = TgtHoTestPath
+		traindata = TgtHoDataPath
+		traintmpt = TgtHoTmptPath
+		trainmodel = TgtHoModel
+	} else if t == "hosrc" {
+		traindata = SrcHoDataPath
+		testdata = SrcHoTestPath
+		traintmpt = SrcHoTmptPath
+		trainmodel = SrcHoModel
+	} else {
+		return errors.New("Unsupport data type")
 	}
-	feature.MsgTpt.Print()
-	feature.MsgMap.Build(feature.MsgTpt)
-	feature.MsgMap.Print()
 
-	dirs := []string{testNeg, testPos}
-	for _, dir := range dirs {
-
-		decfiles, err := utils.FilterFileList(dir, processor.Dec)
+	if tper >= 0.5 || tper <= 0 {
+		return errors.New("TestPercent must >0 and <0.5")
+	}
+	testPos := testdata + "/" + processor.PosF
+	testNeg := testdata + "/" + processor.NegF
+	//1st collect the files from the test and train folder
+	var filesum []string
+	for _, v := range []string{testPos, testNeg, traindata} {
+		fl, err := utils.FilterFileList(v, processor.Dec)
 		if err != nil {
 			return err
 		}
+		filesum = append(filesum, fl...)
+	}
+	log.Debug("CombileFileList:", filesum)
 
-		for _, v := range decfiles {
-			fr, err := feature.CaptureFeatures(dir+"/"+v, false)
-			if err != nil {
-				return err
-			}
-			feature.FeatureRawChain(fr).Print()
-			fp, err := feature.TransformFeaturePure(feature.PureDuplicate(fr))
-			if err != nil {
-				return err
-			}
-			feature.FeaturePureChain(fp).Print()
-			var fpn feature.FeaturePureChain = fp
-			fpn.SvmDeTimeNormalize(1, 2)
-			ml, err := learning.SvmLearn(trainmodel, fpn, feature.MsgTpt)
-			if err != nil {
-				return err
-			}
-			//mlr := fmt.Sprintf("%f", ml)
-			log.Debug("mlr=", ml)
-			if ml == processor.PosValue {
-				if dir == testPos {
-					numvPos++
-				}
-			} else if ml == processor.NegValue {
-				if dir == testNeg {
-					numvNeg++
-				}
-			} else {
-				return errors.New("Unknown learning result label")
-			}
+	rand.Seed(time.Now().UnixNano())
+	utils.Shuffle(filesum)
+	log.Debug("ShuffleCombileFileList:", filesum)
+
+	//2nd rotate train with the percentage files and test with other files
+	total := len(filesum)
+	testnum := int(float64(total) * tper)
+	//trainnum := total - testnum
+	//var result []HybirdResult
+
+	for i := 0; i < total; i++ {
+		var tslice, aslice []string
+		if i < total-testnum {
+			log.Debug("Index:", i, "-ts:", i+testnum)
+			tslice = append(tslice, filesum[i:i+testnum]...)
+			aslice = append(append(aslice, filesum[0:i]...), filesum[i+testnum:]...)
+		} else {
+			log.Debug("Index:", i, "-ts:", i+testnum-total)
+			tslice = append(append(tslice, filesum[i:]...), filesum[0:i+testnum-total]...)
+			aslice = append(aslice, filesum[i+testnum-total:i]...)
 		}
+		log.Debugf("tslice:%v\n", tslice)
+		log.Debugf("aslice:%v\n", aslice)
 	}
 
-	perNeg = float64(numvNeg) / float64(numNeg)
-	perPos = float64(numvPos) / float64(numPos)
-	perVerify = float64(numvPos+numvNeg) / float64(numTotal)
-	log.Infof("Result: numvNeg=%d,numNeg=%d,numPos=%d,numvPos=%d\n", numvNeg, numNeg, numPos, numvPos)
-	log.Infof("Result: perNeg=%f,perPos=%f,perVerify=%f\n", perNeg, perPos, perVerify)
-
+	fmt.Println(traintmpt, trainmodel, total, testnum)
 	return nil
 }
 
 func main() {
 	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc")
 	//hybird will rotate the all data in the train and test folder to do train and test.
-	usage := flag.String("usage", "train", "Usage: train, test, hybird")
+	usage := flag.String("usage", "train", "Usage: train, test, hybird, train-auto")
+	tper := flag.Float64("tper", 0.2, "Usage: 0<tper<0.5")
 	flag.Parse()
 
 	log.Debug("flag input=", *hotype, "|", *usage)
 	if *usage == "train" {
 		TrainModel(*hotype)
 	} else if *usage == "test" {
-		err := TestBenchmark(*hotype)
+		err := BenchmarkModel(*hotype)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else if *usage == "hybird" {
-		log.Info("hybird flag")
+		HybirdBenchmark(*hotype, *tper)
+		log.Info("hybird flag", *tper)
+	} else if *usage == "train-auto" {
+		log.Info("auto train flag")
 	} else {
 		log.Info("Unsupported flag")
 	}
