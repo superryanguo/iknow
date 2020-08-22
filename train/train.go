@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -70,6 +69,7 @@ func BenchmarkModel(t string) error {
 
 func HybirdBenchmark(t string, tper float64) error {
 	var traindata, testdata, traintmpt, trainmodel string
+	var err error
 	if t == "hotgt" {
 		testdata = TgtHoTestPath
 		traindata = TgtHoDataPath
@@ -108,7 +108,7 @@ func HybirdBenchmark(t string, tper float64) error {
 	total := len(filesum)
 	testnum := int(float64(total) * tper)
 	//trainnum := total - testnum
-	//var result []HybirdResult
+	var result []HybirdResult
 
 	for i := 0; i < total; i++ {
 		var tslice, aslice []string
@@ -123,9 +123,25 @@ func HybirdBenchmark(t string, tper float64) error {
 		}
 		log.Debugf("tslice:%v\n", tslice)
 		log.Debugf("aslice:%v\n", aslice)
+		err = TrainSvModel(traindata, traintmpt, trainmodel, aslice)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Info("i=", i, "train done->", trainmodel)
+		r, err := BenchmarkSvModel(testdata, traintmpt, trainmodel, tslice)
+		if err != nil {
+			return err
+		}
+		r.Print()
+		s := CalPercent(r)
+		s.Print()
+		result = append(result, HybirdResult{s, aslice, tslice})
+		log.Info("i=", i, "test done")
 	}
 
-	fmt.Println(traintmpt, trainmodel, total, testnum)
+	for k, v := range result {
+		log.Infof("the %dth Result=%s\n", k, v.Percent.ToString())
+	}
 	return nil
 }
 

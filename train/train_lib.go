@@ -38,6 +38,12 @@ func (r ModelResult) Print() {
 	log.Infof("\nModelResult:\nnumvNeg=%d\nnumNeg=%d\nnumPos=%d\nnumvPos=%d\n", r.NumvNeg, r.NumNeg, r.NumPos, r.NumvPos)
 }
 
+func (r ModelResult) ToString() string {
+	return fmt.Sprintf("\nModelResult:\nnumvNeg=%d\nnumNeg=%d\nnumPos=%d\nnumvPos=%d\n", r.NumvNeg, r.NumNeg, r.NumPos, r.NumvPos)
+}
+func (p Percent) ToString() string {
+	return fmt.Sprintf("\nPercent Result:\nperNeg=%0.2f%%\nperPos=%0.2f%%\nperVerify=%0.2f%%\n", p.PerNeg*100, p.PerPos*100, p.PerVerify*100)
+}
 func (p Percent) Print() {
 	log.Infof("\nPercent Result:\nperNeg=%0.2f%%\nperPos=%0.2f%%\nperVerify=%0.2f%%\n", p.PerNeg*100, p.PerPos*100, p.PerVerify*100)
 }
@@ -97,7 +103,7 @@ func BenchmarkSvModel(datap, tmpt, model string, trainfiles []string) (ModelResu
 	} else {
 		numTotal = len(trainfiles)
 		for _, f := range trainfiles {
-			if strings.Contains(f, processor.NagtiveSymbol) {
+			if strings.Contains(f, processor.NagtiveSymbol) || strings.Contains(f, processor.NegF) {
 				numNeg++
 			}
 		}
