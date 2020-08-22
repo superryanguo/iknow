@@ -46,7 +46,7 @@ func BuildSvmTrainData(trainpath, output, tmpt string, trainfiles []string) erro
 	//1st step: check how many *.dec log in the folder
 
 	if utils.CheckFileExist(output) {
-		log.Debug("FileExist, remove", output, "first")
+		log.Debug("FileExist, remove ", output, " first")
 		err := os.Remove(output)
 		if err != nil {
 			return err
@@ -188,7 +188,7 @@ func MapFeatPurFullToDeSvm(fr feature.FeaturePureChain, t feature.FeatureTemplat
 	return result, nil
 }
 
-//TemplateMatch compare the resutl with the template, see if they match
+//TemplateMatch compare the result with the template, see if they match
 //If the template message point =0, we don't support to match it, pls just
 //Del the point 0 message in the template if it can't have a point
 //if any circule has one match, then return true
@@ -217,6 +217,12 @@ func TemplateMatch(s feature.FeatureTestStatus, t feature.FeatureTemplate) (bool
 		var find bool = true
 
 		for j := 0; j < len(t.T); j++ {
+			if id >= len(s.S) {
+				log.Debug("test file message short")
+				err = fmt.Errorf("id=%d, seq/message mismatch", j)
+				find = false
+				break
+			}
 			if t.T[j].Seq != (s.S[id].Seq-seq0+1) || t.T[j].MsgName != s.S[id].MsgName {
 				log.Debugf("Mismatch: Seq=%d----%d,MsgName=%s-----%s\n", t.T[j].Seq, s.S[id].Seq-seq0+1, t.T[j].MsgName, s.S[id].MsgName)
 				err = fmt.Errorf("id=%d, seq/message mismatch", j)
