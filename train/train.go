@@ -139,9 +139,14 @@ func HybirdBenchmark(t string, tper float64) error {
 		log.Info("i=", i, "test done")
 	}
 
+	var fPos, fNeg, fVer float64
 	for k, v := range result {
+		fPos += v.PerPos
+		fNeg += v.PerNeg
+		fVer += v.PerVerify
 		log.Infof("the %dth Result=%s\n", k, v.Percent.ToString())
 	}
+	log.Infof("Final avarage result:\nperNeg=%0.2f%%\nperPos=%0.2f%%\nperVerify=%0.2f%%\n", fPos*100/float64(len(result)), fNeg*100/float64(len(result)), fVer*100/float64(len(result)))
 	return nil
 }
 
@@ -152,7 +157,7 @@ func main() {
 	tper := flag.Float64("tper", 0.2, "Usage: 0<tper<0.5")
 	flag.Parse()
 
-	log.Debug("flag input=", *hotype, "|", *usage)
+	log.Debug("flag input=", *hotype, "|", *usage, "|", *tper)
 	if *usage == "train" {
 		TrainModel(*hotype)
 	} else if *usage == "test" {
@@ -161,8 +166,10 @@ func main() {
 			log.Fatal(err)
 		}
 	} else if *usage == "hybird" {
-		HybirdBenchmark(*hotype, *tper)
-		log.Info("hybird flag", *tper)
+		err := HybirdBenchmark(*hotype, *tper)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else if *usage == "train-auto" {
 		log.Info("auto train flag")
 	} else {

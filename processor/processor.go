@@ -80,6 +80,17 @@ func BuildSvmTrainData(trainpath, output, tmpt string, trainfiles []string) erro
 			return err
 		}
 		feature.FeatureRawChain(fr).Print()
+		//TODO: That's how we handle the empty feautre list,
+		//how about we just write a labe in SVM file, will it be good?
+		if len(fr) == 0 {
+			label = NegClass
+			_, err = f.WriteString(label + " " + "\n")
+			if err != nil {
+				return err
+			}
+			log.Info("the file:", v, " has empty feature list")
+			continue
+		}
 		fp, err := feature.TransformFeaturePure(feature.PureDuplicate(fr))
 		if err != nil {
 			return err

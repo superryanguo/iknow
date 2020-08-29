@@ -134,6 +134,16 @@ func BenchmarkSvModel(datap, tmpt, model string, trainfiles []string) (ModelResu
 			return mr, err
 		}
 		feature.FeatureRawChain(fr).Print()
+		//TODO: That's how we handle the empty feautre list,
+		//how about we just write a labe in SVM file, will it be good?
+		if len(fr) == 0 {
+			ml, err := learning.SvmLearn(model, nil, feature.MsgTpt)
+			if err != nil {
+				return mr, err
+			}
+			log.Info("benchmark the file:", v, " has empty feature list, svm result:", ml)
+			continue
+		}
 		fp, err := feature.TransformFeaturePure(feature.PureDuplicate(fr))
 		if err != nil {
 			return mr, err

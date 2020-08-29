@@ -1,7 +1,6 @@
 package learning
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -37,9 +36,9 @@ func PopulateResultToX(s string) (map[int]float64, error) {
 	x := make(map[int]float64)
 	var err error
 	tokens := strings.Fields(s)
-	if len(tokens) == 0 {
-		return nil, errors.New("wrong capture feature format")
-	}
+	//if len(tokens) == 0 {
+	//return nil, errors.New("wrong capture feature format")
+	//}
 
 	for _, v := range tokens {
 		if len(v) > 0 {
