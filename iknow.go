@@ -40,6 +40,7 @@ type DataContext struct {
 	FeaPur     feature.FeaturePureChain
 	Returncode string
 	LogRaw     []string
+	Bodyin     string
 }
 
 func init() {
@@ -92,6 +93,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 		bodyin := template.HTMLEscapeString(r.Form.Get("bodyin"))
 		var matchresult bool = false
 		var fts feature.FeatureTestStatus
+		context.Bodyin = bodyin
 		cookie, e := r.Cookie("csrftoken")
 		if e != nil {
 			log.Warn(e)
@@ -112,6 +114,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			if e != nil {
 				log.Warn(e)
 				context.Returncode = "InputDataError:" + e.Error()
+				context.Result = context.Returncode
 				//TODO: should the returncode method combine into below:
 				//http.Error(w, e.Error(), http.StatusInternalServerError)
 				goto SHOW
@@ -122,6 +125,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				if e != nil {
 					log.Warn(e)
 					context.Returncode = "InputDataError:" + e.Error()
+					context.Result = context.Returncode
 					goto SHOW
 				}
 			} else {
@@ -129,6 +133,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				if e != nil {
 					log.Warn(e)
 					context.Returncode = "InputDataError:" + e.Error()
+					context.Result = context.Returncode
 					//TODO: should the returncode method combine into below:
 					//http.Error(w, e.Error(), http.StatusInternalServerError)
 					goto SHOW
@@ -273,6 +278,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Infof("Template:%v\n", context.Template)
+		log.Debug("input body:", context.Bodyin)
 		log.Infof("Returncode:%v\n", context.Returncode)
 		e = b.Execute(w, context)
 		if e != nil {

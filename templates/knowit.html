@@ -52,8 +52,13 @@
             <div id="CodeArea">
 <h2>L3Message:</h2>
 <textarea id="TestCode" name="bodyin" wrap="logical">
+{{ $le:= len .Template.T }}
+{{ if ne $le 0 }}
 {{ range $tt := .Template.T }}
 {{.Seq}}  {{.MsgName}}
+{{ end }}
+{{ else }}
+{{ .Bodyin }}
 {{ end }}
 </textarea>
                 <span id="file-group" class="hidden">

@@ -178,6 +178,7 @@ func (m *FeatureMsgMap) Build(t FeatureTemplate) error {
 		return errors.New("Empty FeatureTemplate data")
 	}
 
+	m.M = make(map[string]int) //must
 	for i := 0; i < len(t.T); i++ {
 		ti := t.T[i]
 		m.M[ti.MsgName] = ti.Point
@@ -243,8 +244,9 @@ func ExtractFeatureTemplateHtml(input string) (t FeatureTemplate, err error) {
 		if len(r) == 0 {
 			continue
 		}
-		if len(r) != (PointIndex + 1) {
-			return FeatureTemplate{nil}, errors.New("Wrong format of tempalte files, not 3 IE")
+		//For html, we support 2 or 3 IE, the point can be ingored
+		if len(r) != (MsgIndex+1) && len(r) != (PointIndex+1) {
+			return FeatureTemplate{nil}, errors.New("Wrong format of input, not 2 or 3 IE")
 		}
 		j := Template{}
 		j.Seq, err = strconv.Atoi(r[SeqIndex])
@@ -252,9 +254,13 @@ func ExtractFeatureTemplateHtml(input string) (t FeatureTemplate, err error) {
 			return FeatureTemplate{nil}, err
 		}
 		j.MsgName = r[MsgIndex]
-		j.Point, err = strconv.Atoi(r[PointIndex])
-		if err != nil {
-			return FeatureTemplate{nil}, err
+		if len(r) == (MsgIndex + 1) {
+			j.Point = 1 //by default, give 1 point
+		} else {
+			j.Point, err = strconv.Atoi(r[PointIndex])
+			if err != nil {
+				return FeatureTemplate{nil}, err
+			}
 		}
 
 		t.T = append(t.T, j)
