@@ -277,14 +277,14 @@ func BuildTestStatus(r FeaturePureChain) (fs FeatureTestStatus) {
 }
 
 //CaptureFeatures make a exact split file with the first timestamp in logs
-func CaptureFeatures(file string, full bool) ([]FeatureRaw, error) {
+func CaptureFeatures(file string, full bool) ([]string, []FeatureRaw, error) {
 	if !utils.CheckFileExist(file) {
-		return nil, errors.New("Log file not exist")
+		return nil, nil, errors.New("Log file not exist")
 	}
 
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	defer func() {
@@ -294,19 +294,20 @@ func CaptureFeatures(file string, full bool) ([]FeatureRaw, error) {
 	}()
 
 	if len(MsgMap.M) == 0 {
-		return nil, errors.New("MsgMap is empety, pls init it")
+		return nil, nil, errors.New("MsgMap is empety, pls init it")
 	}
 
 	r, err := SeekTimeSlam(f, 100)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if len(r) == 0 {
-		return nil, errors.New("wrong length of the SeekTimeSlam result")
+		return nil, nil, errors.New("wrong length of the SeekTimeSlam result")
 	}
 
 	t := make([]FeatureRaw, TptSize, TptCap)
+	var logRaw []string
 
 	for _, w := range r {
 		s := strings.Fields(w)
@@ -316,16 +317,16 @@ func CaptureFeatures(file string, full bool) ([]FeatureRaw, error) {
 				raw.Value = v
 				rt, err := PickFirstTime(w)
 				if err != nil {
-					return nil, err
+					return nil, nil, err
 				}
 				wt := strings.Replace(strings.Replace(rt, "[", "", -1), "]", "", -1)
 				log.Debug("CaptureFeatures time:", wt, "value=", v)
 				raw.Time, raw.Nano, err = FindTimeNano(wt)
 				if err != nil {
-					return nil, fmt.Errorf("FindTimeNano Error:%s", err)
+					return nil, nil, fmt.Errorf("FindTimeNano Error:%s", err)
 				}
 				t = append(t, raw)
-
+				logRaw = append(logRaw, w)
 			}
 		}
 	}
@@ -333,10 +334,11 @@ func CaptureFeatures(file string, full bool) ([]FeatureRaw, error) {
 	//if full false, we need the msg0 as the start point
 	if !full {
 		if len(MsgTpt.T) == 0 {
-			return t, errors.New("MsgTpt not init!")
+			return logRaw, t, errors.New("MsgTpt not init!")
 		}
 		msg0 := MsgTpt.T[0].MsgName
 		index := 0
+		logIndex := 0
 		for w := 0; w < len(t); w++ {
 			if t[w].Value == msg0 {
 				index = w
@@ -344,10 +346,17 @@ func CaptureFeatures(file string, full bool) ([]FeatureRaw, error) {
 				break
 			}
 		}
-		return t[index:], nil
+
+		for x := 0; x < len(logRaw); x++ {
+			if strings.Contains(logRaw[x], msg0) {
+				logIndex = x
+				break
+			}
+		}
+		return logRaw[logIndex:], t[index:], nil
 
 	}
-	return t, nil
+	return logRaw, t, nil
 }
 
 //CaptureFeaturesSlice capture the feature raw from a file
@@ -577,7 +586,7 @@ func PureDuplicate(c []FeatureRaw) []FeatureRaw {
 
 //TransformFeaturePure make the featureraw to featurepure
 func TransformFeaturePure(c []FeatureRaw) ([]FeaturePure, error) {
-	m0 := c[0]
+	m0 := c[0] //TODO: bug, if there's no feature found or no message0 in the featureRaw
 	log.Debug("TransformFeaturePureMsg0=", m0.Value)
 
 	sort.SliceStable(c, func(i, j int) bool {

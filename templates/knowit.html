@@ -34,7 +34,7 @@
                 }
         </script>
         <div>
-            <p>Upload the .dec log and input your template, then analyize!</p>
+            <p>Upload the .dec log and input your L3 messages, then click Analyize!</p>
         </div>
         <link rel="stylesheet" type="text/css" href="/templates/style.css" />
     </head>
@@ -50,17 +50,17 @@
 
         <form enctype="multipart/form-data"  action="/" method="POST">
             <div id="CodeArea">
-                <h2>MessageTemplate:</h2>
-                <textarea id="TestCode" name="bodyin" wrap="logical">
+<h2>L3Message:</h2>
+<textarea id="TestCode" name="bodyin" wrap="logical">
 {{ range $tt := .Template.T }}
-{{.Seq}}  {{.MsgName}}  {{.Point}}
+{{.Seq}}  {{.MsgName}}
 {{ end }}
-                </textarea>
+</textarea>
                 <span id="file-group" class="hidden">
                     *.dec log file: <input type="file" name="uploadfile" />
                 </span>
                 <br>Choose the mode:
-                <input type="radio" name="Mode" value="TemplateMatch" /> TemplateMatch
+				<input type="radio" name="Mode" value="TemplateMatch" /> TemplateMatch
                 <input type="radio" name="Mode" value="MachineLearning" /> Machine-Learning
                 <br>Choose Learning Model:
                 <input type="radio" name="Model" value="HoSrc" /> Handover-Src
@@ -81,9 +81,9 @@
             <h2>Result:</h2>
             <textarea id="decoderesult" name="bodyout" wrap="logical", readonly="readonly">
 {{.Result}}
-+++++++++++++FeaPur++++++++++++++++
-{{ range $fp := .FeaPur }}
-{{.Value}}<-->{{.Time}}<-->{{.Nano}}<-->{{.BoTime}}<-->{{.DeTime}}
+{{ range .LogRaw }}
++++++++++++++Log++++++++++++++++
+{{.}}
 {{ end }}
             </textarea>
         </div>

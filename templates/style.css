@@ -44,7 +44,7 @@ div#butt input {
 div#CodeArea	{
 	float:left;
 	height:435px;
-	width:50%;
+	width:30%;
 	margin-left:5px;
 	}
 
@@ -65,7 +65,7 @@ div#CodeArea	{
 div#result	{
 	float:left;
 	height:435px;
-	width:49%;
+	width:69%;
 	}
 
 #result h2	{

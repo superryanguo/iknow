@@ -36,3 +36,19 @@ func TestFilterFileList(t *testing.T) {
 	}
 
 }
+func TestPureDuplicateString(t *testing.T) {
+	st := []string{"abc", "sfds", "abc"}
+	target := []string{"abc", "sfds"}
+	si := PureDuplicateString(st)
+	fmt.Println("New slice after del duplicate:", si)
+	if len(target) != len(si) {
+		t.Error("PureDuplicateString error")
+	}
+}
+func TestDecideEmptyStringHtml(t *testing.T) {
+	st := "      \n\r;"
+	si := DecideEmptyStringHtml(st)
+	if !si {
+		t.Error("DecideEmptyStringHtml error")
+	}
+}

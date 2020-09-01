@@ -39,6 +39,7 @@ type DataContext struct {
 	FeaRaw     feature.FeatureRawChain
 	FeaPur     feature.FeaturePureChain
 	Returncode string
+	LogRaw     []string
 }
 
 func init() {
@@ -72,6 +73,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "POST" {
 		var context DataContext
 		var mdfile, tmptfile string
+		var lrw []string
 		e = r.ParseForm()
 		if e != nil {
 			http.Error(w, e.Error(), http.StatusInternalServerError)
@@ -115,7 +117,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				goto SHOW
 			}
 		} else {
-			if len(bodyin) == 0 && len(model) != 0 {
+			if utils.DecideEmptyStringHtml(bodyin) && len(model) != 0 {
 				context.Template, e = feature.ExtractFeatureTemplate(tmptfile)
 				if e != nil {
 					log.Warn(e)
@@ -194,7 +196,8 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 				f.Close()
 				context.Returncode = "upload file done"
 
-				context.FeaRaw, e = feature.CaptureFeatures(upload, false)
+				lrw, context.FeaRaw, e = feature.CaptureFeatures(upload, false)
+				context.LogRaw = utils.PureDuplicateString(lrw)
 				if e != nil {
 					context.Result = e.Error()
 					context.Returncode = "CaputreFeatures Fail!"
@@ -242,9 +245,10 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 						context.Result = e.Error()
 						context.Returncode = fmt.Sprintf("TemplateMatch Error:%s", e.Error())
 					} else {
-						context.Result = "MachineLearning Successfully! ResultLabel=" + fmt.Sprintf("%f", ml)
-						context.Returncode = "MachineLearning done!" + fmt.Sprintf("Label:%f", ml)
-						summary += "Succ" + fmt.Sprintf("|Label:%f", ml)
+						mls := utils.MapMlResult2String(ml, model)
+						context.Result = "MachineLearning Successfully! Result=" + mls
+						context.Returncode = "MachineLearning done!" + fmt.Sprintf("%s", mls)
+						summary += "Succ" + fmt.Sprintf("|Label:%s", mls)
 					}
 				} else {
 					log.Warn("Unknow parse mode")

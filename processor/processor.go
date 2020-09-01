@@ -74,7 +74,7 @@ func BuildSvmTrainData(trainpath, output, tmpt string, trainfiles []string) erro
 		//if len(trainfiles) == 0 { //TODO: to be improved
 		//fr, err = feature.CaptureFeatures(trainpath+"/"+v, false)
 		//} else {
-		fr, err = feature.CaptureFeatures(v, false)
+		_, fr, err = feature.CaptureFeatures(v, false)
 		//}
 		if err != nil {
 			return err

@@ -92,7 +92,7 @@ func TestCaputre(t *testing.T) {
 	MsgTpt.Print()
 	MsgMap.Build(MsgTpt)
 	MsgMap.Print()
-	l, err := CaptureFeatures(fn, false)
+	_, l, err := CaptureFeatures(fn, false)
 	if err != nil {
 		t.Error("TestCaputre:", err)
 		return

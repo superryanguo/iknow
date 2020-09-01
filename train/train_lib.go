@@ -129,7 +129,7 @@ func BenchmarkSvModel(datap, tmpt, model string, trainfiles []string) (ModelResu
 	}
 
 	for _, v := range decfiles {
-		fr, err := feature.CaptureFeatures(v, false)
+		_, fr, err := feature.CaptureFeatures(v, false)
 		if err != nil {
 			return mr, err
 		}

@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	HOSuccess = "切换成功"
+	HOFailure = "切换失败"
+)
+
 func CheckFileExist(file string) bool {
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		return false
@@ -74,4 +79,40 @@ func CountFileNum(path string) (int, error) {
 		}
 	}
 	return i, nil
+}
+
+func MapMlResult2String(l float64, model string) string {
+	switch l {
+	case 1:
+		if model == "HoSrc" || model == "HoTgt" {
+			return HOSuccess
+		}
+	case -1:
+		if model == "HoSrc" || model == "HoTgt" {
+			return HOFailure
+		}
+	}
+	return "Unknown string in MapMlResult2String"
+}
+
+//TODO: if string is too long?!
+func PureDuplicateString(s []string) []string {
+	var sn []string
+
+	mapit := make(map[string]bool)
+
+	for _, v := range s {
+		if _, ok := mapit[v]; !ok {
+			mapit[v] = true
+			sn = append(sn, v)
+		}
+	}
+	return sn
+}
+
+func DecideEmptyStringHtml(s string) bool {
+	if len(strings.Replace(strings.Replace(strings.Replace(strings.Replace(s, "\n", "", -1), "\r", "", -1), " ", "", -1), ";", "", -1)) == 0 {
+		return true
+	}
+	return false
 }
