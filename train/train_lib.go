@@ -116,13 +116,9 @@ func BenchmarkSvModel(datap, tmpt, model string, trainfiles []string) (ModelResu
 	var decfiles []string
 
 	if len(trainfiles) == 0 {
-		dirs := []string{testNeg, testPos}
-		for _, dir := range dirs {
-			d, err := utils.FilterFileList(dir, processor.Dec)
-			if err != nil {
-				return mr, err
-			}
-			decfiles = append(decfiles, d...)
+		decfiles, err = processor.TrainFileCollect(datap)
+		if err != nil {
+			return mr, err
 		}
 	} else {
 		decfiles = trainfiles
@@ -176,10 +172,51 @@ func BenchmarkSvModel(datap, tmpt, model string, trainfiles []string) (ModelResu
 
 }
 
-func TrainSvModel(datap, tmpt, output string, trainfiles []string) error {
+func MapSvmKer(s string) int {
+	switch s {
+	case "LINEAR":
+		return libSvm.LINEAR
+	case "POLY":
+		return libSvm.POLY
+	case "RBF":
+		return libSvm.RBF
+	case "SIGMOID":
+		return libSvm.SIGMOID
+	case "PRECOMPUTED":
+		return libSvm.PRECOMPUTED
+	default:
+		return libSvm.RBF
+	}
+}
+
+func MapSvmMod(s string) int {
+	switch s {
+	case "C_SVC":
+		return libSvm.C_SVC
+	case "NU_SVC":
+		return libSvm.NU_SVC
+	case "ONE_CLASS":
+		return libSvm.ONE_CLASS
+	case "EPSILON_SVR":
+		return libSvm.EPSILON_SVR
+	case "NU_SVR":
+		return libSvm.NU_SVR
+	default:
+		return libSvm.C_SVC
+	}
+}
+
+func TrainSvModel(svmmod, svmker, datap, tmpt, output string, trainfiles []string) error {
 	var err error
 	svmpara := libSvm.NewParameter()
 	svmpara.KernelType = libSvm.POLY
+	if len(svmmod) != 0 {
+		svmpara.SvmType = MapSvmMod(svmmod)
+	}
+	if len(svmker) != 0 {
+		svmpara.KernelType = MapSvmKer(svmker)
+	}
+	log.Debug("Set the svmmod and ker:", svmpara.SvmType, svmpara.KernelType)
 	model := libSvm.NewModel(svmpara)
 
 	if len(datap) == 0 {
@@ -207,7 +244,7 @@ func TrainSvModel(datap, tmpt, output string, trainfiles []string) error {
 	}
 
 	if utils.CheckFileExist(output) {
-		log.Debug("FileExist, remove", output, "first")
+		log.Debug("FileExist, remove ", output, " first")
 		err = os.Remove(output)
 		if err != nil {
 			return err

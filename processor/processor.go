@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -60,13 +61,19 @@ func BuildSvmTrainData(trainpath, output, tmpt string, trainfiles []string) erro
 	defer f.Close()
 
 	if len(trainfiles) == 0 { //TODO: to be improved
-		decfiles, err = utils.FilterFileList(trainpath, Dec)
+		decfiles, err = TrainFileCollect(trainpath)
 		if err != nil {
 			return err
 		}
 	} else {
 		decfiles = trainfiles
 	}
+
+	log.Debug("TrainFileList:", decfiles)
+	if len(decfiles) == 0 {
+		return errors.New("0 train files found")
+	}
+
 	//2nd step: capture the features and covert it to svm feature
 	for k, v := range decfiles {
 		log.Debug("BuildSvmTrainData_", k, ":", trainpath+"/"+v)
@@ -251,5 +258,21 @@ func TemplateMatch(s feature.FeatureTestStatus, t feature.FeatureTemplate) (bool
 	}
 
 	return false, err
+
+}
+
+func TrainFileCollect(datap string) ([]string, error) {
+	testPos := datap + "/" + PosF
+	testNeg := datap + "/" + NegF
+	var decfiles []string
+	dirs := []string{testNeg, testPos}
+	for _, dir := range dirs {
+		d, err := utils.FilterFileList(dir, Dec)
+		if err != nil {
+			return nil, err
+		}
+		decfiles = append(decfiles, d...)
+	}
+	return decfiles, nil
 
 }

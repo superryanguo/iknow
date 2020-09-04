@@ -23,7 +23,7 @@ const (
 	Trainfile     = "svm.train"
 )
 
-func TrainModel(t string) {
+func TrainModel(t string, tn string, sm string, sk string) error {
 
 	var traindata, traintmpt, trainmodel string
 	if t == "hotgt" {
@@ -35,16 +35,18 @@ func TrainModel(t string) {
 		traintmpt = SrcHoTmptPath
 		trainmodel = SrcHoModel
 	} else {
-		log.Fatal("Unsupport data type")
+		return errors.New("Unsupport data type")
 	}
-	err := TrainSvModel(traindata, traintmpt, trainmodel, nil)
-	if err != nil {
-		log.Fatal(err)
+	if len(tn) != 0 {
+		traindata = tn
 	}
+	log.Debug("TrainModel: TrainPath=", traindata, " ", sm, " ", sk)
+	err := TrainSvModel(sm, sk, traindata, traintmpt, trainmodel, nil)
+	return err
 
 }
 
-func BenchmarkModel(t string) error {
+func BenchmarkModel(t string, tt string) error {
 	var testdata, traintmpt, trainmodel string
 	if t == "hotgt" {
 		testdata = TgtHoTestPath
@@ -57,6 +59,10 @@ func BenchmarkModel(t string) error {
 	} else {
 		return errors.New("Unsupport data type")
 	}
+	if len(tt) != 0 {
+		testdata = tt
+	}
+	log.Debug("BenchmarkModel: TestPath=", testdata)
 	r, err := BenchmarkSvModel(testdata, traintmpt, trainmodel, nil)
 	if err != nil {
 		return err
@@ -123,7 +129,7 @@ func HybirdBenchmark(t string, tper float64) error {
 		}
 		log.Debugf("tslice:%v\n", tslice)
 		log.Debugf("aslice:%v\n", aslice)
-		err = TrainSvModel(traindata, traintmpt, trainmodel, aslice)
+		err = TrainSvModel("", "", traindata, traintmpt, trainmodel, aslice)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -151,17 +157,24 @@ func HybirdBenchmark(t string, tper float64) error {
 }
 
 func main() {
-	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc")
+	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc, qos")
+	tnpath := flag.String("tnpath", "", "Input the train files folder")
+	ttpath := flag.String("ttpath", "", "Input the test files folder")
+	svmmod := flag.String("svmmod", "", "SVM mode: C_SVC, ONE_CLASS...")
+	svmker := flag.String("svmker", "", "SVM KernelType: POLY, RBF...")
 	//hybird will rotate the all data in the train and test folder to do train and test.
 	usage := flag.String("usage", "train", "Usage: train, test, hybird, train-auto")
 	tper := flag.Float64("tper", 0.2, "Usage: 0<tper<0.5")
 	flag.Parse()
 
-	log.Debug("flag input=", *hotype, "|", *usage, "|", *tper)
+	log.Debug("flag input=", *hotype, "|", *usage, "|", *tper, "|", *tnpath, "|", *ttpath, "|", *svmmod, "|", *svmker)
 	if *usage == "train" {
-		TrainModel(*hotype)
+		err := TrainModel(*hotype, *tnpath, *svmmod, *svmker)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else if *usage == "test" {
-		err := BenchmarkModel(*hotype)
+		err := BenchmarkModel(*hotype, *ttpath)
 		if err != nil {
 			log.Fatal(err)
 		}
