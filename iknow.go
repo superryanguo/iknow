@@ -252,6 +252,18 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 					} else {
 						mls := utils.MapMlResult2String(ml, model)
 						context.Result = "MachineLearning Successfully! Result=" + mls
+						//we want to know a reason if not successful
+						if ml == processor.NegValue {
+							fts = feature.BuildTestStatus(context.FeaPur)
+							log.Debug("ML-Match fts=", fts)
+							_, e = processor.TemplateMatch(fts, context.Template)
+							if e != nil {
+								log.Warn(e)
+								context.Result += " Reason: "
+								context.Result += e.Error()
+								e = nil
+							}
+						}
 						context.Returncode = "MachineLearning done!" + fmt.Sprintf("%s", mls)
 						summary += "Succ" + fmt.Sprintf("|Label:%s", mls)
 					}

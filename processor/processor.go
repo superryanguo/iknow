@@ -237,13 +237,13 @@ func TemplateMatch(s feature.FeatureTestStatus, t feature.FeatureTemplate) (bool
 		for j := 0; j < len(t.T); j++ {
 			if id >= len(s.S) {
 				log.Debug("test file message short")
-				err = fmt.Errorf("id=%d, seq/message mismatch", j)
+				err = fmt.Errorf("id=%d, seq/message mismatch", j+1)
 				find = false
 				break
 			}
 			if t.T[j].Seq != (s.S[id].Seq-seq0+1) || t.T[j].MsgName != s.S[id].MsgName {
 				log.Debugf("Mismatch: Seq=%d----%d,MsgName=%s-----%s\n", t.T[j].Seq, s.S[id].Seq-seq0+1, t.T[j].MsgName, s.S[id].MsgName)
-				err = fmt.Errorf("id=%d, seq/message mismatch", j)
+				err = fmt.Errorf("id=%d, seq/message mismatch", j+1)
 				find = false
 				break
 			}
