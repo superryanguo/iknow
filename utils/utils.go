@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	HOSuccess = "切换成功"
-	HOFailure = "切换失败"
+	HOSuccess  = "切换成功"
+	HOFailure  = "切换失败"
+	QosSuccess = "Qos Success"
+	QosFailure = "Qos Failure"
 )
 
 func CheckFileExist(file string) bool {
@@ -86,10 +88,14 @@ func MapMlResult2String(l float64, model string) string {
 	case 1:
 		if model == "HoSrc" || model == "HoTgt" {
 			return HOSuccess
+		} else if model == "QosFlow" {
+			return QosSuccess
 		}
 	case -1:
 		if model == "HoSrc" || model == "HoTgt" {
 			return HOFailure
+		} else if model == "QosFlow" {
+			return QosFailure
 		}
 	}
 	return "Unknown string in MapMlResult2String"

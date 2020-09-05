@@ -1,6 +1,7 @@
 package learning
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,6 +13,9 @@ import (
 )
 
 func SvmLearn(md string, fr feature.FeaturePureChain, t feature.FeatureTemplate) (float64, error) {
+	if len(md) == 0 {
+		return 0, errors.New("Unknown empty model file")
+	}
 
 	model := libSvm.NewModelFromFile(md)
 

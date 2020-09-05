@@ -190,6 +190,10 @@ func (m *FeatureMsgMap) Build(t FeatureTemplate) error {
 //First element should be seq(start from 1, not 0), 2nd be message name, 3rd should be point
 //Divided by space
 func ExtractFeatureTemplate(file string) (t FeatureTemplate, e error) {
+	if len(file) == 0 {
+		return FeatureTemplate{nil}, errors.New("Empty TempFile, need choose the Model: HoTgt/HoSrc/QosFlow?")
+	}
+
 	if !utils.CheckFileExist(file) {
 		return FeatureTemplate{nil}, errors.New("File not exist")
 	}

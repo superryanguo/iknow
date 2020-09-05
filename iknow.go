@@ -22,11 +22,13 @@ import (
 )
 
 const (
-	LogFile    string = "my.log"
-	HoTgtModel string = "./train/train_model/HoTgt.Model"
-	HoSrcModel string = "./train/train_model/HoSrc.Model"
-	HoSrcTept  string = "./train/train_tempt/HoSrc.tmpt"
-	HoTgtTept  string = "./train/train_tempt/HoTgt.tmpt"
+	LogFile      string = "my.log"
+	HoTgtModel   string = "./train/train_model/HoTgt.Model"
+	HoSrcModel   string = "./train/train_model/HoSrc.Model"
+	QosFlowModel string = "./train/train_model/QosFlow.Model"
+	HoSrcTept    string = "./train/train_tempt/HoSrc.tmpt"
+	HoTgtTept    string = "./train/train_tempt/HoTgt.tmpt"
+	QosFlowTept  string = "./train/train_tempt/QosFlow.tmpt"
 )
 
 type DataContext struct {
@@ -105,6 +107,8 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			mdfile, tmptfile = HoSrcModel, HoSrcTept
 		} else if model == "HoTgt" {
 			mdfile, tmptfile = HoTgtModel, HoTgtTept
+		} else if model == "QosFlow" {
+			mdfile, tmptfile = QosFlowModel, QosFlowTept
 		} else {
 			mdfile, tmptfile = "", "" //TODO: nothing
 		}
@@ -290,7 +294,7 @@ func KnowHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Infof("Template:%v\n", context.Template)
-		log.Debug("input body:", context.Bodyin)
+		//log.Debug("input body:", context.Bodyin)
 		log.Infof("Returncode:%v\n", context.Returncode)
 		e = b.Execute(w, context)
 		if e != nil {

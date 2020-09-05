@@ -12,15 +12,19 @@ import (
 )
 
 const (
-	SrcHoTestPath = "test_data/HoSrc"
-	TgtHoTestPath = "test_data/HoTgt"
-	SrcHoDataPath = "train_data/HoSrc"
-	TgtHoDataPath = "train_data/HoTgt"
-	SrcHoTmptPath = "train_tempt/HoSrc.tmpt"
-	TgtHoTmptPath = "train_tempt/HoTgt.tmpt"
-	SrcHoModel    = "train_model/HoSrc.Model"
-	TgtHoModel    = "train_model/HoTgt.Model"
-	Trainfile     = "svm.train"
+	SrcHoTestPath   = "test_data/HoSrc"
+	TgtHoTestPath   = "test_data/HoTgt"
+	QosFlowTestPath = "test_data/QosFlow"
+	SrcHoDataPath   = "train_data/HoSrc"
+	TgtHoDataPath   = "train_data/HoTgt"
+	QosFlowDataPath = "train_data/QosFlow"
+	SrcHoTmptPath   = "train_tempt/HoSrc.tmpt"
+	TgtHoTmptPath   = "train_tempt/HoTgt.tmpt"
+	QosFlowTmptPath = "train_tempt/QosFlow.tmpt"
+	SrcHoModel      = "train_model/HoSrc.Model"
+	TgtHoModel      = "train_model/HoTgt.Model"
+	QosFlowModel    = "train_model/QosFlow.Model"
+	Trainfile       = "svm.train"
 )
 
 func TrainModel(t string, tn string, sm string, sk string) error {
@@ -34,6 +38,10 @@ func TrainModel(t string, tn string, sm string, sk string) error {
 		traindata = SrcHoDataPath
 		traintmpt = SrcHoTmptPath
 		trainmodel = SrcHoModel
+	} else if t == "qosflow" {
+		traindata = QosFlowDataPath
+		traintmpt = QosFlowTmptPath
+		trainmodel = QosFlowModel
 	} else {
 		return errors.New("Unsupport data type")
 	}
@@ -56,6 +64,10 @@ func BenchmarkModel(t string, tt string) error {
 		testdata = SrcHoTestPath
 		traintmpt = SrcHoTmptPath
 		trainmodel = SrcHoModel
+	} else if t == "qosflow" {
+		testdata = QosFlowTestPath
+		traintmpt = QosFlowTmptPath
+		trainmodel = QosFlowModel
 	} else {
 		return errors.New("Unsupport data type")
 	}
@@ -86,6 +98,11 @@ func HybirdBenchmark(t string, tper float64) error {
 		testdata = SrcHoTestPath
 		traintmpt = SrcHoTmptPath
 		trainmodel = SrcHoModel
+	} else if t == "qosflow" {
+		traindata = QosFlowDataPath
+		testdata = QosFlowTestPath
+		traintmpt = QosFlowTmptPath
+		trainmodel = QosFlowModel
 	} else {
 		return errors.New("Unsupport data type")
 	}
@@ -157,7 +174,7 @@ func HybirdBenchmark(t string, tper float64) error {
 }
 
 func main() {
-	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc, qos")
+	hotype := flag.String("hotype", "hotgt", "HandoverType: hotgt, hosrc, qosflow")
 	tnpath := flag.String("tnpath", "", "Input the train files folder")
 	ttpath := flag.String("ttpath", "", "Input the test files folder")
 	svmmod := flag.String("svmmod", "", "SVM mode: C_SVC, ONE_CLASS...")
