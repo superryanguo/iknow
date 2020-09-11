@@ -162,6 +162,67 @@ func CircleSplitFeature() {
 }
 
 func MapFeatPurFullToDeSvmFloat(fr feature.FeaturePureChain, t feature.FeatureTemplate) (string, error) {
+	var result []string
+	var index int = 1
+	var match []int
+	length := len(fr)
+
+	//message0 is the first index
+	for k, v := range fr {
+		if v.Value == t.T[0].MsgName {
+			match = append(match, k)
+		}
+	}
+	log.Debug("Get the indexmatch: ", match)
+	if len(match) == 0 {
+		return MapFeatPurFullToDeSvmFloatV1(fr, t)
+	}
+
+	for _, w := range match {
+		var r string
+		j := w
+		mask := make([]int, length, length)
+		for i := 0; i < len(t.T); i++ {
+			if j >= len(fr) {
+				break
+			}
+
+			if fr[j].Value == t.T[i].MsgName {
+				r += strconv.Itoa(MatrixD*i+index) + ":" + "1" + " "                                 //1 means message exist
+				r += strconv.Itoa(MatrixD*i+index+1) + ":" + strconv.Itoa(j-w+1) + " "               //seq number
+				r += strconv.Itoa(MatrixD*i+index+2) + ":" + fmt.Sprintf("%.6f", fr[j].NorVal) + " " //Detime
+				mask[j] = 1
+				j++
+			} else {
+				for h := j + 1; h < len(fr); h++ {
+					if fr[h].Value == t.T[i].MsgName && mask[h] != 1 {
+						//j = h TODO: not good to reset the j index?! should add mask about the message has been used to avoid duplicate name
+						mask[h] = 1                                                                          //used
+						r += strconv.Itoa(MatrixD*i+index) + ":" + "1" + " "                                 //1 means message exist
+						r += strconv.Itoa(MatrixD*i+index+1) + ":" + strconv.Itoa(h-w+1) + " "               //seq number
+						r += strconv.Itoa(MatrixD*i+index+2) + ":" + fmt.Sprintf("%.6f", fr[h].NorVal) + " " //Detime
+					}
+				}
+			}
+		}
+		log.Debugf("w=%d, mask=%v\n", w, mask)
+		result = append(result, r)
+	}
+
+	if len(result) == 0 {
+		return "", errors.New("No SVM FeaVector")
+	}
+	log.Debug("ResultSum: ", result)
+	n := 0
+	for x, y := range result {
+		if len(y) > len(result[n]) {
+			n = x
+		}
+	}
+
+	return result[n], nil
+}
+func MapFeatPurFullToDeSvmFloatV1(fr feature.FeaturePureChain, t feature.FeatureTemplate) (string, error) {
 	var result string
 	var index int = 1
 

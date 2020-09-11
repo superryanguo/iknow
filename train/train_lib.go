@@ -54,12 +54,17 @@ func CalPercent(m ModelResult) (p Percent) {
 		log.Info("CalPercent total=0!")
 		return
 	}
+
 	if m.NumNeg != 0 {
 		p.PerNeg = float64(m.NumvNeg) / float64(m.NumNeg)
+	} else {
+		p.PerNeg = 1 //0/0, let's call it 1, or the final avarage percent will be a problem
 	}
 
 	if m.NumPos != 0 {
 		p.PerPos = float64(m.NumvPos) / float64(m.NumPos)
+	} else {
+		p.PerPos = 1
 	}
 
 	p.PerVerify = float64(m.NumvPos+m.NumvNeg) / float64(total)

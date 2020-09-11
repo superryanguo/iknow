@@ -169,7 +169,7 @@ func HybirdBenchmark(t string, tper float64) error {
 		fVer += v.PerVerify
 		log.Infof("the %dth Result=%s\n", k, v.Percent.ToString())
 	}
-	log.Infof("Final avarage result:\nperNeg=%0.2f%%\nperPos=%0.2f%%\nperVerify=%0.2f%%\n", fPos*100/float64(len(result)), fNeg*100/float64(len(result)), fVer*100/float64(len(result)))
+	log.Infof("Final avarage result:\nperNeg=%0.2f%%\nperPos=%0.2f%%\nperVerify=%0.2f%%\n", fNeg*100/float64(len(result)), fPos*100/float64(len(result)), fVer*100/float64(len(result)))
 	return nil
 }
 
